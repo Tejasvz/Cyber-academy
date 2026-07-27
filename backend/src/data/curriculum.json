@@ -1,0 +1,179 @@
+{
+  "tiers": [
+    {
+      "name": "Beginner",
+      "modules": [
+        {
+          "id": "B01",
+          "title": "Networking Fundamentals",
+          "technique": "Network Traffic Analysis",
+          "theory": "Introduction to TCP/IP, DNS, and HTTP protocols.",
+          "lab": "Analyze simulated PCAP files to identify plain-text credentials.",
+          "opSec": "Theory of network monitoring: How defenders detect anomalous traffic and how threat actors attempt to blend in with normal traffic."
+        },
+        {
+          "id": "B02",
+          "title": "Command Line Basics",
+          "technique": "File System Enumeration",
+          "theory": "Basic Linux commands, file permissions, and navigation.",
+          "lab": "Navigate a simulated file system to find hidden 'flag' files.",
+          "opSec": "Understanding logging mechanisms (e.g., .bash_history) and the theoretical concepts of log evasion."
+        },
+        {
+          "id": "B03",
+          "title": "Reconnaissance & OSINT",
+          "technique": "Passive Information Gathering",
+          "theory": "Using public sources to gather information about a target domain.",
+          "lab": "Use simulated WHOIS and DNS enumeration tools.",
+          "opSec": "Concept of origin masking: Why threat actors use VPNs and Tor to mask their IP addresses during reconnaissance."
+        },
+        {
+          "id": "B04",
+          "title": "Basic Network Scanning",
+          "technique": "Port Scanning",
+          "theory": "Understanding how port scanners (like Nmap) identify open services.",
+          "lab": "Run a simulated SYN scan against a target network.",
+          "opSec": "Scan detection: How Intrusion Detection Systems (IDS) detect rapid scanning and the theory behind stealth/slow scanning."
+        },
+        {
+          "id": "B05",
+          "title": "Introduction to Cryptography",
+          "technique": "Hash Cracking",
+          "theory": "Differences between encoding, encryption, and hashing.",
+          "lab": "Crack simple MD5 hashes using a simulated dictionary attack.",
+          "opSec": "Offline vs. Online attacks: Why attackers prefer to exfiltrate hashes and crack them offline to avoid account lockout mechanisms."
+        },
+        {
+          "id": "B06",
+          "title": "Web Architecture",
+          "technique": "Source Code Analysis",
+          "theory": "How web servers and browsers interact (HTML, JS, Cookies).",
+          "lab": "Inspect simulated web page source code for hidden comments and developer API keys.",
+          "opSec": "User-Agent tracking: How defenders use browser fingerprints to track activity and how attackers modify User-Agents."
+        },
+        {
+          "id": "B07",
+          "title": "Social Engineering Basics",
+          "technique": "Phishing",
+          "theory": "Psychological manipulation techniques used in phishing.",
+          "lab": "Identify red flags in simulated phishing emails.",
+          "opSec": "Sender verification evasion: The theory behind spoofing email headers and how SPF/DKIM/DMARC defend against it."
+        }
+      ]
+    },
+    {
+      "name": "Mediator",
+      "modules": [
+        {
+          "id": "M01",
+          "title": "Web Application Proxies",
+          "technique": "Traffic Interception",
+          "theory": "Using proxies (like Burp Suite) to intercept and modify HTTP requests.",
+          "lab": "Intercept a request and modify a price parameter before it reaches the server.",
+          "opSec": "TLS interception: Understanding how HTTPS protects transit data and the concept of certificate pinning."
+        },
+        {
+          "id": "M02",
+          "title": "Cross-Site Scripting (XSS)",
+          "technique": "Reflected XSS",
+          "theory": "How untrusted user input can execute JavaScript in a victim's browser.",
+          "lab": "Inject a payload to trigger an alert box in a simulated search field.",
+          "opSec": "WAF evasion theory: How Web Application Firewalls detect common payloads and the theoretical methods attackers use to encode payloads."
+        },
+        {
+          "id": "M03",
+          "title": "SQL Injection (SQLi) Basics",
+          "technique": "Authentication Bypass",
+          "theory": "Understanding how user input alters SQL queries.",
+          "lab": "Use a basic 'OR 1=1' payload to bypass a simulated login portal.",
+          "opSec": "Query obfuscation: Theoretical discussion on how attackers use SQL comments or alternative encoding to bypass basic signature detection."
+        },
+        {
+          "id": "M04",
+          "title": "Authentication Attacks",
+          "technique": "Brute Forcing",
+          "theory": "Techniques for guessing credentials and session management flaws.",
+          "lab": "Perform a simulated brute-force attack against a login endpoint.",
+          "opSec": "Rate limiting evasion: How attackers theoretically use distributed proxy chains (rotating IPs) to bypass rate limits."
+        },
+        {
+          "id": "M05",
+          "title": "Directory Traversal",
+          "technique": "LFI (Local File Inclusion)",
+          "theory": "Exploiting improper sanitization of file paths.",
+          "lab": "Read the /etc/passwd file on a simulated vulnerable server.",
+          "opSec": "Payload normalization: How servers normalize paths (e.g., ../) and how attackers theoretically bypass these filters."
+        },
+        {
+          "id": "M06",
+          "title": "Network Sniffing",
+          "technique": "ARP Spoofing",
+          "theory": "How ARP works and how it can be abused for Man-in-the-Middle attacks.",
+          "lab": "Simulate intercepting traffic between two virtual nodes.",
+          "opSec": "MAC Address masking: The concept of MAC spoofing to hide physical device identities on local networks."
+        },
+        {
+          "id": "M07",
+          "title": "Basic Privilege Escalation",
+          "technique": "Linux SUIDs",
+          "theory": "Understanding file permissions and how SUID binaries run as root.",
+          "lab": "Exploit a misconfigured SUID binary to gain a root shell.",
+          "opSec": "Process hiding: Theoretical concepts of how rootkits hide malicious processes from system administrators."
+        }
+      ]
+    },
+    {
+      "name": "Advanced",
+      "modules": [
+        {
+          "id": "A01",
+          "title": "Advanced SQL Injection",
+          "technique": "Blind/Time-Based SQLi",
+          "theory": "Extracting data when the application does not return SQL errors.",
+          "lab": "Use simulated time-based payloads to infer database contents letter by letter.",
+          "opSec": "Traffic timing anomalies: How defenders detect time-based attacks and how attackers introduce jitter to avoid statistical detection."
+        },
+        {
+          "id": "A02",
+          "title": "Server-Side Request Forgery (SSRF)",
+          "technique": "Internal Network Pivoting",
+          "theory": "Forcing a server to make requests to internal resources.",
+          "lab": "Exploit a simulated webhook to access an internal metadata API.",
+          "opSec": "DNS rebinding: Theoretical concept of using dynamic DNS to bypass SSRF filters during the time-of-check to time-of-use (TOCTOU) window."
+        },
+        {
+          "id": "A03",
+          "title": "Buffer Overflows",
+          "technique": "Stack-Based Overflows",
+          "theory": "Memory architecture, the stack, and how overwriting the Instruction Pointer (EIP) works.",
+          "lab": "Simulate overwriting a buffer to execute a pre-placed shellcode.",
+          "opSec": "Exploit mitigation theory: Understanding ASLR and DEP, and the theoretical concepts of ROP (Return-Oriented Programming) chains to bypass them."
+        },
+        {
+          "id": "A04",
+          "title": "Active Directory Attacks",
+          "technique": "Kerberoasting",
+          "theory": "Understanding Kerberos authentication and Service Principal Names (SPNs).",
+          "lab": "Extract simulated ticket-granting service (TGS) tickets for offline cracking.",
+          "opSec": "Event Log monitoring: How defenders use Windows Event Logs (e.g., Event ID 4769) to detect Kerberoasting, and how attackers attempt to blend in."
+        },
+        {
+          "id": "A05",
+          "title": "Command Injection",
+          "technique": "OS Command Execution",
+          "theory": "Exploiting applications that pass unsanitized input to system shells.",
+          "lab": "Inject terminal commands into a simulated ping utility.",
+          "opSec": "Out-of-band (OOB) exfiltration: Conceptually how attackers use DNS queries to exfiltrate data when direct outbound connections are blocked."
+        },
+        {
+          "id": "A06",
+          "title": "Advanced Evasion",
+          "technique": "Antivirus Evasion",
+          "theory": "How Antivirus/EDR uses signatures and heuristics to detect malware.",
+          "lab": "Simulate obfuscating a known payload to bypass a static signature check.",
+          "opSec": "In-memory execution: The theory behind fileless malware and how attackers execute code directly in RAM to avoid touching the disk."
+        }
+      ]
+    }
+  ]
+}
