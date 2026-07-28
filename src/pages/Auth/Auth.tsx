@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
+import { API_BASE_URL } from '../../services/api';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,7 +20,7 @@ const Auth = () => {
     const payload = isLogin ? { email, password } : { username, email, password };
 
     try {
-      const response = await axios.post(`http://localhost:3000${endpoint}`, payload);
+      const response = await axios.post(`${API_BASE_URL}${endpoint}`, payload);
       login(response.data.user, response.data.token);
     } catch (err: any) {
       setError(err.response?.data?.error || 'An error occurred. Please try again.');
