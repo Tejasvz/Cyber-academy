@@ -2,8 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-primary: #00f0ff;
+  --color-secondary: #ff00ff;
+  --color-primary-glow: rgba(0, 240, 255, 0.4);
+  --color-surface-border: rgba(0, 240, 255, 0.2);
+}
+
 @layer base {
   body {
-    @apply bg-background text-textMain font-sans antialiased;
+    @apply bg-background text-textMain font-sans antialiased relative overflow-hidden;
   }
+}
+
+/* CRT Screen Scanline effect */
+.scanlines::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+  z-index: 100;
+  background-size: 100% 4px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* Glassmorphism scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(13, 13, 18, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary);
+}
+
+/* Neon glow for headers */
+.text-shadow-neon {
+  text-shadow: 0 0 8px var(--color-primary-glow);
 }
