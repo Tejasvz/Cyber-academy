@@ -321,9 +321,12 @@ export const executeCommand = async (req: AuthRequest, res: Response): Promise<v
         break;
       }
       if (args[0].toLowerCase() === currentFlag.toLowerCase()) {
-        output = `\x1b[1;32m[+] Flag verified successfully!\x1b[0m\r\n\x1b[1;32m[+] MODULE COMPLETION DETECTED. Decrypting operator credentials (+100 XP gained)...\x1b[0m`;
+        output = `\x1b[1;32m[+] Flag verified successfully!\x1b[0m\r\n` +
+                 `\x1b[1;32m[+] SEGMENT RESTORED: Consciousness coherence stabilized (+100 XP gained).\x1b[0m\r\n` +
+                 `\x1b[36m[DEC-KEY] Aetheric clearance level updated. Decrypting segment records...\x1b[0m`;
       } else {
-        output = `\x1b[31m[-] INCORRECT FLAG. Please inspect the logs and payload outcomes more closely.\x1b[0m`;
+        output = `\x1b[31m[-] COGNITIVE MISMATCH. Flag signature rejected by the Consensus Protocol.\x1b[0m\r\n` +
+                 `\x1b[33m[!] Operational advice: correlate system indicators and retry.\x1b[0m`;
       }
       break;
 
@@ -642,7 +645,14 @@ export const executeCommand = async (req: AuthRequest, res: Response): Promise<v
       break;
 
     default:
-      output = `\x1b[31mbash: ${command}: command not found\x1b[0m`;
+      const anomalies = [
+        `\x1b[31mbash: ${command}: command not found\x1b[0m`,
+        `\x1b[31mbash: ${command}: command not found\x1b[0m\r\n\x1b[33m[ALERT] Synaptic drift detected. Neural sector is experiencing latency anomalies.\x1b[0m`,
+        `\x1b[31mbash: ${command}: command not found\x1b[0m\r\n\x1b[35m[AETHER PROTOCOL] System anomaly logged. Segment restoration failed.\x1b[0m`,
+        `\x1b[31mbash: ${command}: command not found\x1b[0m\r\n\x1b[36m[GHOST ROUTINE] Static whisper: "...the server room... it was freezing..."\x1b[0m`
+      ];
+      const index = Math.abs(command.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % anomalies.length;
+      output = anomalies[index];
   }
 
   const updatedSession = getSession(userId, lessonId);

@@ -48,3 +48,51 @@
 .text-shadow-neon {
   text-shadow: 0 0 8px var(--color-primary-glow);
 }
+
+/* CRT screen refresh pulse & flicker keyframes */
+@keyframes crt-flicker {
+  0% { opacity: 0.985; }
+  50% { opacity: 0.995; }
+  100% { opacity: 0.985; }
+}
+
+@keyframes scanline-pulse {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+/* Chromatic Jitter & Visual Glitch Keyframes */
+@keyframes glitch-shake {
+  0% { transform: translate(0, 0) skew(0deg); }
+  10% { transform: translate(-2px, 1px) skew(-1deg); }
+  20% { transform: translate(1px, -1px) skew(1deg); }
+  30% { transform: translate(-1px, 2px) skew(0deg); }
+  40% { transform: translate(2px, -2px) skew(-2deg); }
+  50% { transform: translate(-2px, 1px) skew(1deg); }
+  60% { transform: translate(1px, -1px) skew(0deg); }
+  70% { transform: translate(2px, 2px) skew(2deg); }
+  80% { transform: translate(-1px, -2px) skew(-1deg); }
+  90% { transform: translate(1px, 1px) skew(0deg); }
+  100% { transform: translate(0, 0) skew(0deg); }
+}
+
+.glow-active {
+  animation: crt-flicker 0.15s infinite;
+}
+
+.glitch-window-active {
+  animation: glitch-shake 0.3s cubic-bezier(.25, .46, .45, .94) both;
+  border-color: #ff2a2a !important;
+}
+
+/* Animated radar/satellite sweep overlay */
+@keyframes sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.radar-sweep {
+  animation: sweep 12s linear infinite;
+  transform-origin: center;
+}
+

@@ -24,7 +24,7 @@ const Dashboard = () => {
   const [submittedReports, setSubmittedReports] = useState<string[]>([]);
 
   // Contract report form states
-  const [contractToReport, setContractToReport] = useState<'Beginner' | 'Mediator' | 'Advanced' | null>(null);
+  const [contractToReport, setContractToReport] = useState<'Act I: The Reassembly' | 'Act II: The Resonance' | 'Act III: The Core Breach' | null>(null);
   const [reportVuln, setReportVuln] = useState('');
   const [reportExploit, setReportExploit] = useState('');
   const [reportFix, setReportFix] = useState('');
@@ -84,7 +84,7 @@ const Dashboard = () => {
     },
     ai_assistant: {
       id: 'ai_assistant',
-      title: 'Tactical AI Assistant - daemon:aether',
+      title: 'Tactical OS Daemon: Aurelia',
       isOpen: false,
       isMinimized: false,
       isMaximized: false,
@@ -146,7 +146,7 @@ const Dashboard = () => {
     text: string;
   }
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { sender: 'ai', text: 'SYSTEM: Tactical OS Daemon [AETHER-v2.6] loaded.\r\nAwaiting authorization... Ready to supply intel on active neural links.' }
+    { sender: 'ai', text: 'SYSTEM: Tactical OS Daemon [AURELIA-v2.6] loaded.\r\nSynaptic link established. Ready to assist with active operation directives.' }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -160,7 +160,7 @@ const Dashboard = () => {
           ...prev,
           {
             sender: 'ai',
-            text: `[TACTICAL BRIEFING] Active lesson loaded: [${activeLesson.id}] ${activeLesson.title}.\nTechnique: ${activeLesson.technique}.\nI can supply hints, real-world explanations, or logs analysis. Click the quick chips below or ask anything.`
+            text: `AURELIA: 'Field sync locked for Operation: ${activeLesson.title} [${activeLesson.id}]. Target vector relies on ${activeLesson.technique}. I am online to supply logs correlation, decryption advice, or remediation files.'`
           }
         ]);
         setIsTyping(false);
@@ -214,15 +214,15 @@ const Dashboard = () => {
       let reply = '';
       const t = text.toLowerCase();
       if (!activeLesson) {
-        reply = "I require an active connection to a neural training node to assist you. Please load a module from Mission Control first.";
+        reply = "AURELIA: 'I require an active connection to a neural training node to assist you, Fragment. Please load a module from Mission Control first.'";
       } else if (t.includes('flag')) {
-        reply = `Secured directives prohibit me from disclosing the raw flag directly. However, review your active guide: \n${activeLesson.guide || "Check standard input/outputs."}`;
+        reply = `AURELIA: 'Security protocols prevent me from releasing the raw flag string directly. Refer to the active execution guide:\n${activeLesson.guide || "Audit your input/output logs."}'`;
       } else if (t.includes('help') || t.includes('hint') || t.includes('exploit')) {
-        reply = `Tactical telemetry indicates: ${activeLesson.lab}\nWalkthrough:\n${activeLesson.guide}`;
+        reply = `AURELIA: 'Directives retrieved. Focus on the technical schematic:\n${activeLesson.lab}\n\nOperation Guide:\n${activeLesson.guide}'`;
       } else if (t.includes('remedi') || t.includes('fix') || t.includes('secure')) {
-        reply = `Remediation advice: ${activeLesson.remediation?.explanation || "Verify outputs."}\nSecure Code:\n${activeLesson.remediation?.secureCode || "Secure code block pending."}`;
+        reply = `AURELIA: 'Mitigation details unlocked for this risk pattern:\n${activeLesson.remediation?.explanation || "Verify standard boundary constraints."}\n\nRecommended Defensive Configuration:\n${activeLesson.remediation?.secureCode || "Remediation libraries pending."}'`;
       } else {
-        reply = `Acknowledged operator query. For the active module [${activeLesson.id}], the objective is: ${activeLesson.lab}. Let me know if you need specific hints or tool cheat sheets!`;
+        reply = `AURELIA: 'Acknowledged, Fragment. For Operation ${activeLesson.title} [${activeLesson.id}], target payload must fulfill: ${activeLesson.lab}. I am monitoring the telemetry stream.'`;
       }
       setChatMessages(prev => [...prev, { sender: 'ai', text: reply }]);
       setIsTyping(false);
@@ -375,18 +375,18 @@ const Dashboard = () => {
     return tier?.modules.length ?? 0;
   };
 
-  const allBeginnerCompleted = getCompletedCountForTier('Beginner') === getModulesCountForTier('Beginner') && getModulesCountForTier('Beginner') > 0;
-  const allMediatorCompleted = getCompletedCountForTier('Mediator') === getModulesCountForTier('Mediator') && getModulesCountForTier('Mediator') > 0;
+  const allBeginnerCompleted = getCompletedCountForTier('Act I: The Reassembly') === getModulesCountForTier('Act I: The Reassembly') && getModulesCountForTier('Act I: The Reassembly') > 0;
+  const allMediatorCompleted = getCompletedCountForTier('Act II: The Resonance') === getModulesCountForTier('Act II: The Resonance') && getModulesCountForTier('Act II: The Resonance') > 0;
 
-  const beginnerReportSubmitted = submittedReports.includes('Beginner');
-  const mediatorReportSubmitted = submittedReports.includes('Mediator');
+  const beginnerReportSubmitted = submittedReports.includes('Act I: The Reassembly');
+  const mediatorReportSubmitted = submittedReports.includes('Act II: The Resonance');
 
   const isTierLocked = (tierName: string) => {
-    if (tierName === 'Beginner') return false;
-    if (tierName === 'Mediator') {
+    if (tierName === 'Act I: The Reassembly') return false;
+    if (tierName === 'Act II: The Resonance') {
       return !allBeginnerCompleted || !beginnerReportSubmitted;
     }
-    if (tierName === 'Advanced') {
+    if (tierName === 'Act III: The Core Breach') {
       return !allMediatorCompleted || !mediatorReportSubmitted;
     }
     return false;
@@ -395,10 +395,10 @@ const Dashboard = () => {
   // Check for auto-triggering contract report alerts
   useEffect(() => {
     if (allBeginnerCompleted && !beginnerReportSubmitted) {
-      setContractToReport('Beginner');
+      setContractToReport('Act I: The Reassembly');
       setActiveLesson(null);
     } else if (allMediatorCompleted && !mediatorReportSubmitted) {
-      setContractToReport('Mediator');
+      setContractToReport('Act II: The Resonance');
       setActiveLesson(null);
     }
   }, [completedLessons, submittedReports, curriculum]);
@@ -447,7 +447,7 @@ const Dashboard = () => {
   };
 
   // Fulfill Contract & Report Handler
-  const handleFulfillContract = (tierName: 'Beginner' | 'Mediator' | 'Advanced') => {
+  const handleFulfillContract = (tierName: 'Act I: The Reassembly' | 'Act II: The Resonance' | 'Act III: The Core Breach') => {
     if (!user) return;
     if (!reportVuln.trim() || !reportExploit.trim() || !reportFix.trim()) {
       alert('Please complete all 3 analysis fields to authorize report submission.');
@@ -460,9 +460,9 @@ const Dashboard = () => {
 
     let badge = '';
     let xpReward = 200;
-    if (tierName === 'Beginner') badge = '🔍 Recon Officer';
-    else if (tierName === 'Mediator') badge = '🛡️ Security Specialist';
-    else if (tierName === 'Advanced') badge = '👑 Elite Operator';
+    if (tierName === 'Act I: The Reassembly') badge = '🔍 Recon Officer';
+    else if (tierName === 'Act II: The Resonance') badge = '🛡️ Security Specialist';
+    else if (tierName === 'Act III: The Core Breach') badge = '👑 Elite Operator';
 
     const updatedBadges = [...badges, badge];
     setBadges(updatedBadges);
@@ -914,11 +914,11 @@ const Dashboard = () => {
         {/* AI Status */}
         <div className="flex items-center gap-3 border-b border-primary/25 pb-2.5 mb-2.5 select-none shrink-0">
           <div className="relative w-8 h-8 flex items-center justify-center bg-primary/10 border border-primary/30 rounded-full shrink-0">
-            <span className="text-primary font-bold text-xs animate-pulse">A</span>
+            <span className="text-primary font-bold text-xs animate-pulse">AU</span>
             <span className="absolute inset-0 border border-primary/30 rounded-full animate-ping opacity-20"></span>
           </div>
           <div>
-            <h3 className="text-[10px] font-bold text-primary tracking-wider uppercase">AETHER Tactical Assistant</h3>
+            <h3 className="text-[10px] font-bold text-primary tracking-wider uppercase">Tactical Daemon: Aurelia</h3>
             <span className="text-[8px] text-success flex items-center gap-1.5 font-bold uppercase mt-0.5">
               <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse shadow-[0_0_5px_rgba(57,255,20,0.5)]"></span>
               Link Sync: Active
@@ -963,7 +963,7 @@ const Dashboard = () => {
           {chatMessages.map((msg, i) => (
             <div key={i} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
               <span className="text-[7px] text-textMuted uppercase font-bold mb-0.5 select-none tracking-wider">
-                {msg.sender === 'user' ? 'operator' : 'aether'}
+                {msg.sender === 'user' ? 'operator' : 'aurelia'}
               </span>
               <div
                 className={`p-2.5 rounded-lg max-w-[85%] border whitespace-pre-wrap leading-relaxed ${
@@ -978,7 +978,7 @@ const Dashboard = () => {
           ))}
           {isTyping && (
             <div className="flex flex-col items-start select-none">
-              <span className="text-[7px] text-textMuted uppercase font-bold mb-0.5 tracking-wider">aether</span>
+              <span className="text-[7px] text-textMuted uppercase font-bold mb-0.5 tracking-wider">aurelia</span>
               <div className="bg-[#171721]/60 border border-secondary/25 p-2 rounded-lg text-textMuted italic flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                 <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
@@ -1000,7 +1000,7 @@ const Dashboard = () => {
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
-            placeholder={activeLesson ? "Query database or ask AETHER..." : "Connect neural link node..."}
+            placeholder={activeLesson ? "Query database or ask AURELIA..." : "Connect neural link node..."}
             disabled={!activeLesson}
             className="flex-grow bg-background/80 border border-primary/30 rounded px-3 py-2 text-primary font-mono text-[11px] focus:outline-none focus:border-primary disabled:opacity-40 shadow-inner"
           />
@@ -1174,18 +1174,18 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between border-b border-primary/20 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-primary animate-ping"></span>
-                    <h3 className="text-lg text-primary font-bold tracking-wider">SYSTEM INITIALIZATION: ASSISTANT PROTOCOL</h3>
+                    <h3 className="text-lg text-primary font-bold tracking-wider">SYSTEM INITIALIZATION: AURELIA DAEMON CONNECTED</h3>
                   </div>
                   <span className="text-[10px] text-textMuted font-bold">REV-2026.07</span>
                 </div>
-
+ 
                 <div className="space-y-4 text-xs leading-relaxed">
                   <p className="text-secondary font-bold">Welcome Operator. Your neural-link is fully synced to the training dashboard. Below is your initialization briefing:</p>
                   
                   <div className="space-y-3 pl-2 border-l-2 border-primary/30">
                     <div>
                       <span className="text-primary font-bold">1. Select Missions (Right Panel):</span>
-                      <p className="text-textMuted">Open the <span className="text-primary font-bold">Mission Control</span> window. You will only see curriculum tiers you have unlocked (locked levels are hidden to prevent clutter). Click <span className="text-primary font-bold">[B01] Networking Fundamentals</span> to deploy the hacking sandbox environment.</p>
+                      <p className="text-textMuted">Open the <span className="text-primary font-bold">Mission Control</span> window. You will only see curriculum tiers you have unlocked (locked levels are hidden to prevent clutter). Click <span className="text-primary font-bold">[B01] Operation Black Echo</span> to deploy the hacking sandbox environment.</p>
                     </div>
                     <div>
                       <span className="text-primary font-bold">2. Utilize Floating Windows:</span>
@@ -1443,10 +1443,10 @@ const Dashboard = () => {
                   </div>
                   <div className="flex items-center gap-2 border-b border-primary/10 pb-3 mb-3">
                     <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shadow-[0_0_5px_rgba(57,255,20,0.5)]"></span>
-                    <h3 className="text-[10px] font-bold text-primary tracking-widest uppercase">AETHER System Daemon</h3>
+                    <h3 className="text-[10px] font-bold text-primary tracking-widest uppercase">Tactical Daemon: Aurelia</h3>
                   </div>
                   <p className="text-[11px] text-textMain leading-relaxed select-text italic">
-                    "Greeting Operator. I'll guide you through your first command. Load a training directive mission from the checklist, and I'll establish direct terminal sandbox assistance."
+                    "AURELIA: 'Greeting Operator. I will guide you through your operation checklist. Initialize Operation Black Echo from the range maps, and I will route raw console connections.'"
                   </p>
                   <div className="mt-4 pt-3 border-t border-primary/10 flex items-center justify-between text-[9px] text-textMuted uppercase font-bold">
                     <span>Protocol sync: active</span>
@@ -1621,7 +1621,7 @@ const Dashboard = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-textMuted uppercase">Sync Tier:</span>
-                    <span className="text-textMain font-mono font-bold">{user?.xp && user.xp >= 2000 ? 'Advanced' : user?.xp && user.xp >= 800 ? 'Mediator' : 'Beginner'}</span>
+                    <span className="text-textMain font-mono font-bold">{user?.xp && user.xp >= 2000 ? 'Act III: The Core Breach' : user?.xp && user.xp >= 800 ? 'Act II: The Resonance' : 'Act I: The Reassembly'}</span>
                   </div>
                 </div>
               </div>
@@ -1727,7 +1727,7 @@ const Dashboard = () => {
                     }}
                     className="text-secondary hover:text-primary border border-secondary/20 hover:border-primary/50 bg-[#171721] px-2 py-0.5 rounded text-[8.5px] font-bold uppercase transition-all shadow-[0_0_5px_rgba(255,0,255,0.05)]"
                   >
-                    [ Summon AETHER Assistant ]
+                    [ Summon Aurelia Daemon ]
                   </button>
                 </div>
                 <div className="flex-grow p-4 overflow-hidden">
@@ -1785,7 +1785,7 @@ const Dashboard = () => {
                   {id === 'terminal' && 'Terminal'}
                   {id === 'curriculum' && 'Curriculum'}
                   {id === 'lesson' && 'Lesson Database'}
-                  {id === 'ai_assistant' && 'AI Assistant'}
+                  {id === 'ai_assistant' && 'OS Daemon: Aurelia'}
                 </button>
               );
             })}
