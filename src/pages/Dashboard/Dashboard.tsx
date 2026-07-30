@@ -10,6 +10,7 @@ import { useDialogueStore } from '../../store/dialogueStore';
 import { useAudioStore } from '../../store/audioStore';
 import { TapeDecryptor } from '../../components/Dialogue/TapeDecryptor';
 import { ConspiracyBoard } from '../../components/Conspiracy/ConspiracyBoard';
+import { SectorMap } from '../../components/Map/SectorMap';
 
 const Dashboard = () => {
   const { user, token, logout, login } = useAuth();
@@ -1481,15 +1482,8 @@ const Dashboard = () => {
 
         {renderWindow(
           'world_map',
-          <div className="flex flex-col items-center justify-center h-full text-center font-mono p-6">
-            <span className="text-3xl mb-3 animate-pulse">🗺️</span>
-            <h3 className="text-sm font-bold text-shadow-neon text-primary tracking-widest uppercase">Lattice Sector Map [Neural Veil]</h3>
-            <p className="text-[10px] text-textMuted uppercase max-w-md mt-2 leading-relaxed">
-              Connecting local neural link nodes... Mapping Aether and Syndicate boundaries across Sector Zero grid maps.
-            </p>
-            <div className="mt-4 border border-primary/20 bg-primary/5 px-3 py-1 text-[8.5px] uppercase font-bold text-primary animate-pulse">
-              System Status: [MAPPING RANGE...]
-            </div>
+          <div className="p-0 h-full flex flex-col overflow-hidden">
+            <SectorMap userXp={user?.xp || 0} />
           </div>
         )}
       
