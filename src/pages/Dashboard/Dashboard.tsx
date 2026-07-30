@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useWindowStore } from '../../store/windowStore';
 import { DialogueFeed } from '../../components/Dialogue/DialogueFeed';
 import { useDialogueStore } from '../../store/dialogueStore';
+import { useAudioStore } from '../../store/audioStore';
 
 const Dashboard = () => {
   const { user, token, logout, login } = useAuth();
@@ -16,8 +17,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   // Gameplay & tab states
-  const [activeMenu, setActiveMenu] = useState<'home' | 'syllabus' | 'dossier' | 'workspace'>('home');
-  const [useFloatingWindows, setUseFloatingWindows] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'theory' | 'sandbox' | 'blueteam' | 'remediation'>('theory');
   const [flagInput, setFlagInput] = useState('');
   const [flagError, setFlagError] = useState('');
@@ -52,6 +51,12 @@ const Dashboard = () => {
   } = useWindowStore();
 
   const { startDialogueSequence } = useDialogueStore();
+  const {
+    initializeAudio,
+    playUiClick,
+    playSuccessChime,
+    playFailureSweep
+  } = useAudioStore();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [timeStr, setTimeStr] = useState('');
 
@@ -244,6 +249,16 @@ const Dashboard = () => {
     }
   }, [user?.id]);
 
+
+  // First interaction audio initialization hook
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      initializeAudio();
+      document.removeEventListener('click', handleFirstInteraction);
+    };
+    document.addEventListener('click', handleFirstInteraction);
+    return () => document.removeEventListener('click', handleFirstInteraction);
+  }, [initializeAudio]);
   // Automated Act I Initial Briefing Sequence trigger
   useEffect(() => {
     if (!loading && curriculum && user) {
@@ -345,6 +360,7 @@ const Dashboard = () => {
       setCompletedLessons(prev => new Set(prev).add(activeLesson.id));
       setFlagError('');
       setFlagInput('');
+      playSuccessChime();
       
       // Setup Breach Overlay Details
       setBreachDetails({
@@ -367,6 +383,7 @@ const Dashboard = () => {
       login(data.user, token);
     } catch (error: any) {
       console.error('Failed to complete lesson:', error);
+      playFailureSweep();
       const errMsg = error.response?.data?.error || 'INCORRECT FLAG. Analyze outputs or try command again.';
       setFlagError(errMsg);
       setTimeout(() => setFlagError(''), 4500);
@@ -496,21 +513,21 @@ const Dashboard = () => {
           
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => toggleMinimize(id)}
+              onClick={() => { playUiClick(); toggleMinimize(id); }}
               className="window-control-btn w-5 h-5 rounded bg-primary/10 border border-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-colors text-[9px] font-mono"
               title="Minimize"
             >
               _
             </button>
             <button
-              onClick={() => toggleMaximize(id)}
+              onClick={() => { playUiClick(); toggleMaximize(id); }}
               className="window-control-btn w-5 h-5 rounded bg-primary/10 border border-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-colors text-[9px] font-mono"
               title={win.isMaximized ? "Restore" : "Maximize"}
             >
               {win.isMaximized ? "⧉" : "▢"}
             </button>
             <button
-              onClick={() => closeWindow(id)}
+              onClick={() => { playUiClick(); closeWindow(id); }}
               className="window-control-btn w-5 h-5 rounded bg-error/10 border border-error/20 hover:bg-error hover:text-white text-error flex items-center justify-center transition-colors text-[9px] font-mono"
               title="Close"
             >
@@ -991,8 +1008,12 @@ const Dashboard = () => {
       {/* Compact Cyber-OS Sidebar Rail */}
       <aside className="w-16 md:w-20 bg-surface/95 border-r border-primary/20 flex flex-col items-center justify-between py-6 shrink-0 z-40 select-none shadow-[5px_0_15px_rgba(0,0,0,0.4)]">
         <div className="flex flex-col items-center gap-6 w-full">
-          {/* Main Logo icon */}
-          <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary flex items-center justify-center font-bold text-shadow-neon text-primary animate-pulse select-none cursor-pointer hover:bg-primary/20 transition-colors" title="Cyber Academy OS" onClick={() => setActiveMenu('home')}>
+          {/* Main Logo icon - Opens world map */}
+          <div 
+            className="w-10 h-10 rounded-lg bg-primary/10 border border-primary flex items-center justify-center font-bold text-shadow-neon text-primary animate-pulse select-none cursor-pointer hover:bg-primary/20 transition-colors" 
+            title="Cyber Academy OS" 
+            onClick={() => { playUiClick(); openWindow('world_map'); }}
+          >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
@@ -1002,63 +1023,52 @@ const Dashboard = () => {
 
           {/* Navigation Toggles */}
           <button
-            onClick={() => setActiveMenu('home')}
-            className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border ${
-              activeMenu === 'home' 
-                ? 'bg-primary/20 text-primary border-primary/45 shadow-[0_0_10px_rgba(0,240,255,0.2)]' 
-                : 'text-textMuted border-transparent'
-            }`}
+            onClick={() => { playUiClick(); openWindow('world_map'); }}
+            className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-textMuted"
           >
-            <span className="text-base">🏡</span>
-            <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Home</span>
+            <span className="text-base">🗺️</span>
+            <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Map</span>
+            <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
+              Lattice Sector Map
+            </span>
+          </button>
+
+          <button
+            onClick={() => { playUiClick(); openWindow('curriculum'); }}
+            className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-textMuted"
+          >
+            <span className="text-base">🛰️</span>
+            <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Missions</span>
             <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
               Mission Control
             </span>
           </button>
 
           <button
-            onClick={() => setActiveMenu('syllabus')}
-            className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border ${
-              activeMenu === 'syllabus' 
-                ? 'bg-primary/20 text-primary border-primary/45 shadow-[0_0_10px_rgba(0,240,255,0.2)]' 
-                : 'text-textMuted border-transparent'
-            }`}
+            onClick={() => { playUiClick(); openWindow('conspiracy'); }}
+            className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-textMuted"
           >
-            <span className="text-base">🛰️</span>
-            <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Syllabus</span>
+            <span className="text-base">🕸️</span>
+            <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Intel</span>
             <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
-              Missions & Tiers
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveMenu('dossier')}
-            className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border ${
-              activeMenu === 'dossier' 
-                ? 'bg-primary/20 text-primary border-primary/45 shadow-[0_0_10px_rgba(0,240,255,0.2)]' 
-                : 'text-textMuted border-transparent'
-            }`}
-          >
-            <span className="text-base">🔍</span>
-            <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Dossier</span>
-            <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
-              Operator Dossier
+              Conspiracy Board
             </span>
           </button>
 
           {activeLesson && (
             <button
-              onClick={() => setActiveMenu('workspace')}
-              className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border ${
-                activeMenu === 'workspace' 
-                  ? 'bg-primary/25 text-primary border-primary/50 shadow-[0_0_10px_rgba(0,240,255,0.35)] font-bold' 
-                  : 'text-secondary border-transparent animate-pulse'
-              }`}
+              onClick={() => {
+                playUiClick();
+                openWindow('terminal');
+                openWindow('lesson');
+                openWindow('ai_assistant');
+              }}
+              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-secondary animate-pulse"
             >
               <span className="text-base">⚡</span>
               <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Sandbox</span>
               <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
-                Active Workspace
+                Active Sandbox
               </span>
             </button>
           )}
@@ -1068,7 +1078,7 @@ const Dashboard = () => {
           <div className="w-8 h-[1px] bg-primary/20"></div>
           
           <button
-            onClick={() => setShowOnboarding(true)}
+            onClick={() => { playUiClick(); setShowOnboarding(true); }}
             className="w-10 h-10 rounded-full bg-primary/5 hover:bg-primary/15 border border-primary/20 hover:border-primary flex items-center justify-center text-primary text-xs transition-all group relative"
             title="Guidebook"
           >
@@ -1409,7 +1419,7 @@ const Dashboard = () => {
               return (
                 <button
                   key={id}
-                  onClick={() => toggleMinimize(id)}
+                  onClick={() => { playUiClick(); toggleMinimize(id); }}
                   className={`px-3 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border ${
                     isFocused
                       ? 'bg-primary/25 border-primary text-primary font-bold shadow-[0_0_8px_rgba(0,240,255,0.2)]'
@@ -1430,14 +1440,6 @@ const Dashboard = () => {
         </div>
 
         <div className="flex items-center gap-4 text-[10px] text-textMuted select-none">
-          {activeLesson && activeMenu === 'workspace' && (
-            <button
-              onClick={() => setUseFloatingWindows(!useFloatingWindows)}
-              className="bg-secondary/15 border border-secondary text-secondary hover:bg-secondary hover:text-background px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all select-none"
-            >
-              {useFloatingWindows ? 'Structured View' : 'Floating Windows'}
-            </button>
-          )}
           <span className="hidden sm:inline">System Latency: <span className="text-success font-bold">0.0035s</span></span>
           <span className="hidden sm:inline">|</span>
           <span className="text-primary font-mono font-bold tracking-wider">{timeStr}</span>
