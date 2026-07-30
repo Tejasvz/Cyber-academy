@@ -22,6 +22,7 @@ interface WindowStore {
   bringToFront: (id: string) => void;
   updateWindowPosition: (id: string, x: number, y: number) => void;
   updateWindowSize: (id: string, width: number, height: number) => void;
+  resetLayout: () => void;
 }
 
 const INITIAL_WINDOWS: Record<string, WindowState> = {
@@ -93,8 +94,33 @@ const INITIAL_WINDOWS: Record<string, WindowState> = {
   },
 };
 
+const getPersistedLayout = (): Record<string, WindowState> => {
+  try {
+    const saved = localStorage.getItem('operator_os_layout');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Validate that all initial window keys exist in the parsed object
+      const allKeysExist = Object.keys(INITIAL_WINDOWS).every(key => parsed[key] !== undefined);
+      if (allKeysExist) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse cached window layout:', e);
+  }
+  return INITIAL_WINDOWS;
+};
+
+const persistLayout = (windows: Record<string, WindowState>) => {
+  try {
+    localStorage.setItem('operator_os_layout', JSON.stringify(windows));
+  } catch (e) {
+    console.warn('Failed to cache window layout:', e);
+  }
+};
+
 export const useWindowStore = create<WindowStore>((set) => ({
-  windows: INITIAL_WINDOWS,
+  windows: getPersistedLayout(),
   windowOrder: ['curriculum', 'terminal', 'lesson', 'ai_assistant', 'conspiracy', 'world_map'],
 
   openWindow: (id) =>
@@ -111,6 +137,8 @@ export const useWindowStore = create<WindowStore>((set) => ({
         },
       };
 
+      persistLayout(updatedWindows);
+
       const updatedOrder = state.windowOrder.filter((wId) => wId !== id);
       updatedOrder.push(id);
 
@@ -125,14 +153,18 @@ export const useWindowStore = create<WindowStore>((set) => ({
       const target = state.windows[id];
       if (!target) return {};
 
-      return {
-        windows: {
-          ...state.windows,
-          [id]: {
-            ...target,
-            isOpen: false,
-          },
+      const updatedWindows = {
+        ...state.windows,
+        [id]: {
+          ...target,
+          isOpen: false,
         },
+      };
+
+      persistLayout(updatedWindows);
+
+      return {
+        windows: updatedWindows,
       };
     }),
 
@@ -149,6 +181,8 @@ export const useWindowStore = create<WindowStore>((set) => ({
           isMinimized: nextMinimized,
         },
       };
+
+      persistLayout(updatedWindows);
 
       let updatedOrder = [...state.windowOrder];
       if (!nextMinimized) {
@@ -168,14 +202,18 @@ export const useWindowStore = create<WindowStore>((set) => ({
       const target = state.windows[id];
       if (!target) return {};
 
-      return {
-        windows: {
-          ...state.windows,
-          [id]: {
-            ...target,
-            isMaximized: !target.isMaximized,
-          },
+      const updatedWindows = {
+        ...state.windows,
+        [id]: {
+          ...target,
+          isMaximized: !target.isMaximized,
         },
+      };
+
+      persistLayout(updatedWindows);
+
+      return {
+        windows: updatedWindows,
       };
     }),
 
@@ -214,15 +252,19 @@ export const useWindowStore = create<WindowStore>((set) => ({
         snapY = window.innerHeight - 45 - target.height;
       }
 
-      return {
-        windows: {
-          ...state.windows,
-          [id]: {
-            ...target,
-            x: snapX,
-            y: snapY,
-          },
+      const updatedWindows = {
+        ...state.windows,
+        [id]: {
+          ...target,
+          x: snapX,
+          y: snapY,
         },
+      };
+
+      persistLayout(updatedWindows);
+
+      return {
+        windows: updatedWindows,
       };
     }),
 
@@ -235,15 +277,32 @@ export const useWindowStore = create<WindowStore>((set) => ({
       const minWidth = 280;
       const minHeight = 200;
 
-      return {
-        windows: {
-          ...state.windows,
-          [id]: {
-            ...target,
-            width: Math.max(minWidth, width),
-            height: Math.max(minHeight, height),
-          },
+      const updatedWindows = {
+        ...state.windows,
+        [id]: {
+          ...target,
+          width: Math.max(minWidth, width),
+          height: Math.max(minHeight, height),
         },
+      };
+
+      persistLayout(updatedWindows);
+
+      return {
+        windows: updatedWindows,
+      };
+    }),
+
+  resetLayout: () =>
+    set(() => {
+      try {
+        localStorage.removeItem('operator_os_layout');
+      } catch (e) {
+        console.warn('Failed to clear window layout cache:', e);
+      }
+      return {
+        windows: INITIAL_WINDOWS,
+        windowOrder: ['curriculum', 'terminal', 'lesson', 'ai_assistant', 'conspiracy', 'world_map'],
       };
     }),
 }));
