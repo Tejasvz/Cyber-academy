@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { useAuth } from '../../context/AuthContext';
 import { type Lesson, executeTerminalCommand } from '../../services/curriculumService';
+import { useAudioStore } from '../../store/audioStore';
 
 interface TerminalProps {
   activeLesson: Lesson | null;
@@ -18,6 +19,11 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, width, height }) => {
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const { user, token } = useAuth();
+  const { playUiClick, playFailureSweep } = useAudioStore();
+
+  // Command History Buffer References
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef<number>(-1);
   
   // Refs to prevent stale closures in xterm listeners
   const activeLessonRef = useRef<Lesson | null>(activeLesson);
@@ -100,14 +106,14 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, width, height }) => {
     const term = new XTerm({
       cursorBlink: true,
       fontFamily: '"Fira Code", monospace',
-      fontSize: 14,
+      fontSize: 13,
       theme: {
-        background: '#0d0d12',
-        foreground: '#e2e2e8',
+        background: '#0a0a0f',
+        foreground: '#00f0ff',
         cursor: '#00f0ff',
-        cursorAccent: '#0d0d12',
+        cursorAccent: '#0a0a0f',
         selectionBackground: 'rgba(0, 240, 255, 0.3)',
-        black: '#0d0d12',
+        black: '#0a0a0f',
         red: '#ff2a2a',
         green: '#39ff14',
         yellow: '#ffb000',
@@ -153,10 +159,49 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, width, height }) => {
         } else {
           term.write(getPromptString());
         }
-      } 
+      }
+      // Handle Up/Down Arrow history navigation
+      else if (data.startsWith('\x1b')) {
+        const history = historyRef.current;
+        if (data === '\x1b[A' && history.length > 0) { // Up Arrow
+          playUiClick();
+          let idx = historyIndexRef.current;
+          if (idx === -1) {
+            idx = history.length - 1;
+          } else {
+            idx = Math.max(0, idx - 1);
+          }
+          historyIndexRef.current = idx;
+
+          // Clear current input on screen
+          for (let i = 0; i < currentInput.length; i++) {
+            term.write('\b \b');
+          }
+          currentInput = history[idx];
+          term.write(currentInput);
+        } else if (data === '\x1b[B') { // Down Arrow
+          playUiClick();
+          let idx = historyIndexRef.current;
+          if (idx !== -1) {
+            // Clear current input on screen
+            for (let i = 0; i < currentInput.length; i++) {
+              term.write('\b \b');
+            }
+
+            if (idx < history.length - 1) {
+              idx++;
+              historyIndexRef.current = idx;
+              currentInput = history[idx];
+              term.write(currentInput);
+            } else {
+              historyIndexRef.current = -1;
+              currentInput = '';
+            }
+          }
+        }
+      }
       // Handle character input
       else {
-        // Exclude special characters (like arrow keys) from currentInput
         if (data.charCodeAt(0) >= 32 && data.charCodeAt(0) < 127) {
           currentInput += data;
           term.write(data);
@@ -183,26 +228,75 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, width, height }) => {
       return;
     }
 
+    // Save to command history buffer
+    historyRef.current.push(cmdStr);
+    historyIndexRef.current = -1;
+
+    const cmdLower = cmdStr.toLowerCase().trim();
+
+    // 1. Local Tactical OS Command Interceptors
+    if (cmdLower === 'veil_status') {
+      playUiClick();
+      term.writeln('\r\n\x1b[1;36m[VEIL SECTOR GRID STATUS - SYSTEM TELEMETRY]\x1b[0m');
+      term.writeln('ACTIVE GATEWAY: SEC_ZERO_BRIDGE (CONNECTED)');
+      term.writeln('LATTICE STRENGTH: 94.62%  |  LATENCY: 0.0035s');
+      term.writeln('DECRYPTION DIRECTORY MAPS: LOCKED [Sector 1-4]');
+      term.writeln('\x1b[1;32mSYS_STATUS: STANDBY (AURELIA DAEMON ROUTING STABLE)\x1b[0m');
+      term.write(getPromptString());
+      return;
+    }
+
+    if (cmdLower === 'sys_decrypt') {
+      playUiClick();
+      term.writeln('\r\n\x1b[1;33m[DECRYPTING ACTIVE SYNDICATE NETWORK PATHS...]\x1b[0m');
+      term.writeln('Scanning synaptic buffers... OK');
+      term.writeln('Checking gateway authentication keys... OK');
+      term.writeln(`Current Cleared Target Nodes: ${Array.from(user?.xp ? [1] : []).length}`);
+      term.writeln('\x1b[1;36m[AURELIA] Hint: Submit lesson flags inside the Operator database to decrypt sectors.\x1b[0m');
+      term.write(getPromptString());
+      return;
+    }
+
+    if (cmdLower === 'help') {
+      playUiClick();
+      term.writeln('\r\n\x1b[1;36m[AETHER CODES OS TERMINAL SHELL - V2.6]\x1b[0m');
+      term.writeln('Local classified commands:');
+      term.writeln('  help           - Display available commands reference');
+      term.writeln('  clear          - Clear terminal screen buffer');
+      term.writeln('  veil_status    - Query current neural connection metrics');
+      term.writeln('  sys_decrypt    - Telemetry active sector bypass levels');
+      term.writeln('\r\nRange binaries / lab executables:');
+      term.writeln('  ls             - List directory elements');
+      term.writeln('  cat <file>     - Print target file content');
+      term.writeln('  nmap <host>    - Analyze target network port bindings');
+      term.writeln('  curl <url>     - Fetch network resource streams');
+      term.writeln('  hashcat <hash> - Crack cryptographic hash strings');
+      term.write(getPromptString());
+      return;
+    }
+
+    if (cmdLower === 'clear') {
+      term.clear();
+      term.write(getPromptString().trimStart());
+      return;
+    }
+
+    // 2. Server-side Simulated Sandbox Command Execution
     try {
-      // Execute command on server-side simulator
       const res = await executeTerminalCommand(lesson.id, cmdStr, token || '');
       
-      // Output result to console buffer
       if (res.output) {
         term.write(res.output);
       }
 
-      // Sync local prompt variables with the updated session state
       currentDirRef.current = res.currentDir;
       isRootShellRef.current = res.isRootShell;
       isSubShellRef.current = res.isSubShell;
       isInterceptStateRef.current = res.isInterceptState;
 
-      if (cmdStr.toLowerCase() === 'clear') {
-        term.clear();
-      }
     } catch (error) {
       console.error('Command execution failed:', error);
+      playFailureSweep();
       term.writeln('\r\n[-] Error: Command execution failed. Connection to cyber range node lost.');
     }
 
@@ -210,8 +304,30 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, width, height }) => {
   };
 
   return (
-    <div className="w-full h-full p-4 bg-background border border-primary/20 rounded shadow-neon overflow-hidden">
-      <div className="h-full w-full" ref={terminalRef} />
+    <div className="w-full h-full p-4 bg-[#0a0a0f] border border-primary/20 rounded shadow-[0_0_20px_rgba(0,240,255,0.1)] overflow-hidden relative CRT-glow">
+      {/* CRT Scanline grid */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-30 opacity-[0.18] mix-blend-overlay"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))',
+          backgroundSize: '100% 4px, 6px 100%',
+        }}
+      />
+      {/* CRT Glass reflection curve */}
+      <div className="absolute inset-0 pointer-events-none z-30 bg-gradient-to-tr from-transparent via-primary/[0.02] to-transparent" />
+      {/* Dynamic Screen Flicker Overlay */}
+      <div className="absolute inset-0 pointer-events-none z-30 opacity-[0.03] bg-primary animate-[flicker_0.15s_infinite]" />
+      
+      {/* XTerm container */}
+      <div className="h-full w-full relative z-20" ref={terminalRef} />
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes flicker {
+          0% { opacity: 0.015; }
+          50% { opacity: 0.025; }
+          100% { opacity: 0.015; }
+        }
+      `}} />
     </div>
   );
 };
