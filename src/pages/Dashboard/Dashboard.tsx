@@ -9,6 +9,7 @@ import { DialogueFeed } from '../../components/Dialogue/DialogueFeed';
 import { useDialogueStore } from '../../store/dialogueStore';
 import { useAudioStore } from '../../store/audioStore';
 import { TapeDecryptor } from '../../components/Dialogue/TapeDecryptor';
+import { ConspiracyBoard } from '../../components/Conspiracy/ConspiracyBoard';
 
 const Dashboard = () => {
   const { user, token, logout, login } = useAuth();
@@ -1473,15 +1474,8 @@ const Dashboard = () => {
 
         {renderWindow(
           'conspiracy',
-          <div className="flex flex-col items-center justify-center h-full text-center font-mono p-6">
-            <span className="text-3xl mb-3 animate-pulse">🕸️</span>
-            <h3 className="text-sm font-bold text-shadow-neon text-primary tracking-widest uppercase">Intel Linker [Conspiracy Board]</h3>
-            <p className="text-[10px] text-textMuted uppercase max-w-md mt-2 leading-relaxed">
-              System mapping offline. Core database fragments must be recovered from Sector Zero to reconstruct direct evidence connections.
-            </p>
-            <div className="mt-4 border border-primary/20 bg-primary/5 px-3 py-1 text-[8.5px] uppercase font-bold text-primary animate-pulse">
-              System Status: [PENDING RECOVERY]
-            </div>
+          <div className="p-0 h-full flex flex-col overflow-hidden">
+            <ConspiracyBoard completedLessons={completedLessons} />
           </div>
         )}
 
