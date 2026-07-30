@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useDialogueStore, type DialogueNode } from '../../store/dialogueStore';
+import { CharacterPortrait } from './CharacterPortrait';
 
 export const DialogueFeed = () => {
   const {
@@ -125,31 +126,45 @@ export const DialogueFeed = () => {
   };
 
   return (
-    <div className="fixed bottom-16 left-1/2 transform -translate-x-1/2 w-[90%] max-w-2xl bg-[#07070a]/95 border border-primary/40 rounded-lg p-4 font-mono shadow-[0_0_25px_rgba(0,240,255,0.2)] z-50 flex flex-col gap-3 CRT-glow">
-      <div className="flex justify-between items-center border-b border-primary/20 pb-2">
-        <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${speakerColors[currentNode.speaker] || speakerColors.operator}`}>
-          {speakerNameMap[currentNode.speaker] || 'Unknown Origin'}
-        </span>
-        <button 
-          onClick={skipDialogueSequence}
-          className="text-textMuted hover:text-error text-[8px] uppercase font-bold transition-colors cursor-pointer border border-transparent hover:border-error/20 px-1 rounded font-mono"
-        >
-          [ Skip Transmission ]
-        </button>
+    <div className="fixed bottom-16 left-1/2 transform -translate-x-1/2 w-[90%] max-w-2xl bg-[#07070a]/95 border border-primary/40 rounded-lg p-4 font-mono shadow-[0_0_25px_rgba(0,240,255,0.2)] z-50 flex gap-4 items-stretch CRT-glow">
+      {/* Left Column: Animated Holographic Portrait */}
+      <div className="w-24 h-24 shrink-0 rounded border border-primary/20 overflow-hidden bg-[#0a0a0f]/80 relative shadow-inner">
+        <CharacterPortrait 
+          speaker={currentNode.speaker} 
+          expression={currentNode.expression || 'neutral'} 
+          isTyping={displayedText.length < currentNode.text.length} 
+        />
       </div>
 
-      <div className="text-[11px] leading-relaxed text-textMain min-h-[40px] whitespace-pre-wrap select-text font-mono">
-        {displayedText}
-        <span className="w-1.5 h-3.5 bg-primary inline-block ml-0.5 animate-pulse"></span>
-      </div>
+      {/* Right Column: Dialogue Info & Text */}
+      <div className="flex-grow flex flex-col justify-between min-w-0">
+        <div className="flex justify-between items-center border-b border-primary/20 pb-1.5 mb-2">
+          <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${speakerColors[currentNode.speaker] || speakerColors.operator}`}>
+            {speakerNameMap[currentNode.speaker] || 'Unknown Origin'}
+          </span>
+          <button 
+            onClick={skipDialogueSequence}
+            className="text-textMuted hover:text-error text-[8px] uppercase font-bold transition-colors cursor-pointer border border-transparent hover:border-error/20 px-1 rounded font-mono"
+          >
+            [ Skip Transmission ]
+          </button>
+        </div>
 
-      <div className="flex justify-end pt-1">
-        <button
-          onClick={handleNextClick}
-          className="bg-primary/10 border border-primary text-primary hover:bg-primary hover:text-background text-[9px] font-bold uppercase py-1 px-3.5 rounded transition-all cursor-pointer shadow-neon font-mono"
-        >
-          {displayedText.length < currentNode.text.length ? '[ Fast Forward ]' : '[ Next ]'}
-        </button>
+        <div className="text-[11px] leading-relaxed text-textMain min-h-[44px] whitespace-pre-wrap select-text font-mono flex-grow pr-1 overflow-y-auto">
+          {displayedText}
+          {displayedText.length < currentNode.text.length && (
+            <span className="w-1.5 h-3.5 bg-primary inline-block ml-0.5 animate-pulse"></span>
+          )}
+        </div>
+
+        <div className="flex justify-end pt-1">
+          <button
+            onClick={handleNextClick}
+            className="bg-primary/10 border border-primary text-primary hover:bg-primary hover:text-background text-[9px] font-bold uppercase py-1 px-3.5 rounded transition-all cursor-pointer shadow-neon font-mono"
+          >
+            {displayedText.length < currentNode.text.length ? '[ Fast Forward ]' : '[ Next ]'}
+          </button>
+        </div>
       </div>
     </div>
   );
