@@ -58,6 +58,9 @@ const Dashboard = () => {
     playFailureSweep
   } = useAudioStore();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [bootState, setBootState] = useState<'booting' | 'prompt' | 'completed'>('booting');
+  const [bootProgress, setBootProgress] = useState(0);
+  const [bootLines, setBootLines] = useState<string[]>([]);
   const [timeStr, setTimeStr] = useState('');
 
   // Clock effect
@@ -201,12 +204,44 @@ const Dashboard = () => {
 
 
 
-  // Show onboarding guide for first-time operators
+  // Crash-Boot Simulation sequence loops
   useEffect(() => {
-    if (!loading && user && user.xp === 0 && completedLessons.size === 0) {
-      setShowOnboarding(true);
-    }
-  }, [loading, user, completedLessons.size]);
+    if (bootState !== 'booting') return;
+
+    const allLines = [
+      "👁️  [ SEC_LEVEL_0: DECRYPTING SYNAPTIC MEMORY BLOCK ]",
+      "CPU: SYNAPSE NEURAL LATTICE V4 (64 CORES LOADED)",
+      "MEMORY MODULE CHECK: 1048576 KB ... SECURE",
+      "PERIPHERAL STATUS: Neural Veil link fragmented",
+      "DECRYPTION SECTORS: 0x00F0FF - 0x1A4FE0",
+      "INITIALIZING SECURE SOCKET CORE BUFFER...",
+      "WARNING: Syndicate tracers detected on bypass buffer",
+      "SYNCHRONIZING SECURE NETWORK PORTS...",
+      "SYSTEM DECRYPTION COMPLETED. Ready for interface unlock."
+    ];
+
+    let lineIndex = 0;
+    let progress = 0;
+
+    const interval = setInterval(() => {
+      progress += Math.floor(Math.random() * 8) + 4;
+      if (progress >= 100) {
+        progress = 100;
+        setBootState('prompt');
+        clearInterval(interval);
+      }
+      setBootProgress(progress);
+
+      // Distribute printing lines evenly across progress percentage
+      const targetLinesCount = Math.floor((progress / 100) * allLines.length) + 1;
+      if (lineIndex < targetLinesCount && lineIndex < allLines.length) {
+        setBootLines(allLines.slice(0, targetLinesCount));
+        lineIndex = targetLinesCount;
+      }
+    }, 120);
+
+    return () => clearInterval(interval);
+  }, [bootState]);
 
 
 
@@ -1148,7 +1183,7 @@ const Dashboard = () => {
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-surface border border-primary p-6 rounded-lg max-w-2xl w-full shadow-[0_0_30px_rgba(0,240,255,0.25)] space-y-6 font-mono text-textMain"
+                className="bg-surface border border-primary p-6 rounded-lg max-w-2xl w-full shadow-[0_0_30px_rgba(0,240,255,0.25)] space-y-6 font-mono text-textMain relative"
               >
                 <div className="flex items-center justify-between border-b border-primary/20 pb-3">
                   <div className="flex items-center gap-2">
@@ -1157,7 +1192,7 @@ const Dashboard = () => {
                   </div>
                   <span className="text-[10px] text-textMuted font-bold">REV-2026.07</span>
                 </div>
- 
+   
                 <div className="space-y-4 text-xs leading-relaxed">
                   <p className="text-secondary font-bold">Welcome Operator. Your neural-link is fully synced to the training dashboard. Below is your initialization briefing:</p>
                   
@@ -1183,14 +1218,87 @@ const Dashboard = () => {
 
                 <div className="flex justify-end pt-3 border-t border-primary/20">
                   <button
-                    onClick={() => setShowOnboarding(false)}
-                    className="bg-primary text-background hover:bg-transparent hover:text-primary hover:border-primary border border-transparent font-bold py-2.5 px-6 rounded-lg uppercase tracking-wider transition-all text-xs shadow-neon font-mono"
+                    onClick={() => { playUiClick(); setShowOnboarding(false); }}
+                    className="bg-primary text-background hover:bg-transparent hover:text-primary hover:border-primary border border-transparent font-bold py-2.5 px-6 rounded-lg uppercase tracking-wider transition-all text-xs shadow-neon font-mono cursor-pointer"
                   >
-                    [ Initialize Interface ]
+                    [ Close Onboarding ]
                   </button>
                 </div>
               </motion.div>
             </div>
+          )}
+        </AnimatePresence>
+
+        {/* Cinematic Crash-Boot Onboarding Overlay */}
+        <AnimatePresence>
+          {bootState !== 'completed' && (
+            <motion.div 
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6 }}
+              className="fixed inset-0 z-50 bg-[#07070a] flex flex-col items-center justify-center p-4 font-mono select-none overflow-hidden"
+            >
+              {/* CRT scanline grids */}
+              <div 
+                className="absolute inset-0 pointer-events-none z-10 opacity-40 mix-blend-overlay"
+                style={{
+                  backgroundImage: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05))',
+                  backgroundSize: '100% 4px, 6px 100%',
+                }}
+              />
+ 
+              <div className="w-full max-w-xl flex flex-col gap-6 text-xs text-primary bg-[#0c0c10] border border-primary/20 p-8 rounded-lg shadow-[0_0_40px_rgba(0,240,255,0.15)] relative CRT-glow">
+                {/* Terminal Boot Log Header */}
+                <div className="flex justify-between items-center border-b border-primary/20 pb-3">
+                  <span className="text-[10px] font-bold tracking-widest text-secondary animate-pulse">// AETHER CORE DECRYPTION SYSTEM</span>
+                  <span className="text-[9px] text-textMuted font-mono">BIOS_v8.12.92</span>
+                </div>
+ 
+                {/* Simulated Line Output */}
+                <div className="space-y-2 h-44 overflow-y-auto font-mono text-[10px] leading-relaxed pr-1 select-none">
+                  {bootLines.map((line, idx) => (
+                    <div key={idx} className={idx === bootLines.length - 1 ? 'text-primary' : 'text-textMuted'}>
+                      {line}
+                    </div>
+                  ))}
+                  {bootState === 'booting' && (
+                    <div className="flex items-center gap-3 mt-4">
+                      <div className="flex-grow bg-[#171721] h-2 rounded overflow-hidden border border-primary/20 relative">
+                        <div 
+                          className="bg-primary h-full transition-all duration-100"
+                          style={{ width: `${bootProgress}%` }}
+                        />
+                      </div>
+                      <span className="text-[9px] font-bold min-w-[28px] text-right">{bootProgress}%</span>
+                    </div>
+                  )}
+                </div>
+ 
+                {/* Interactive Prompt Action */}
+                <div className="h-16 flex items-center justify-center pt-4 border-t border-primary/20 shrink-0">
+                  {bootState === 'prompt' ? (
+                    <button
+                      onClick={() => {
+                        initializeAudio();
+                        setBootState('completed');
+                        playUiClick();
+                        if (user && user.xp === 0 && completedLessons.size === 0) {
+                          setShowOnboarding(true);
+                        }
+                      }}
+                      className="bg-primary text-background hover:bg-transparent hover:text-primary hover:border-primary border border-transparent font-bold py-3 px-8 rounded-lg uppercase tracking-widest transition-all text-xs shadow-neon font-mono cursor-pointer animate-pulse"
+                    >
+                      [ Initialize Interface ]
+                    </button>
+                  ) : (
+                    <div className="text-[10px] text-textMuted uppercase tracking-widest animate-pulse flex items-center gap-2">
+                      <span className="inline-block w-2.5 h-2.5 border-2 border-t-transparent border-primary rounded-full animate-spin"></span>
+                      Bypassing local memory security layers...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
