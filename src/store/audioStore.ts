@@ -57,7 +57,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       filterNode.connect(masterGain);
 
       const ambientGain = ctx.createGain();
-      ambientGain.gain.value = 0.25; // Keep background hum subtle
+      ambientGain.gain.value = 0.02; // Keep background hum truly subtle
       ambientGain.connect(filterNode);
 
       // 2. Synthesize Procedural Ambient Reactor Hum (Aether Core background)
@@ -66,9 +66,9 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       ambientOsc1.type = 'sine';
       ambientOsc1.frequency.value = 55; // A1 note
 
-      // Osc 2: Triangle for mechanical texture
+      // Osc 2: Smooth sine octave for a deep, non-buzzing hum
       ambientOsc2 = ctx.createOscillator();
-      ambientOsc2.type = 'triangle';
+      ambientOsc2.type = 'sine';
       ambientOsc2.frequency.value = 110; // A2 octave
 
       // LFO filter sweep (modulates local lowpass filter node slowly)

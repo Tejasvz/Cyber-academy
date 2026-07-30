@@ -59,7 +59,9 @@ const Dashboard = () => {
     initializeAudio,
     playUiClick,
     playSuccessChime,
-    playFailureSweep
+    playFailureSweep,
+    toggleMute,
+    isMuted,
   } = useAudioStore();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [bootState, setBootState] = useState<'booting' | 'prompt' | 'completed'>('booting');
@@ -1350,8 +1352,19 @@ const Dashboard = () => {
           </div>
 
           <button
+            onClick={() => { playUiClick(); toggleMute(); }}
+            className={`border px-3 py-1.5 rounded transition-all text-[10px] uppercase font-bold tracking-wider cursor-pointer ${
+              isMuted 
+                ? 'border-error/50 text-error hover:bg-error/10' 
+                : 'border-primary/50 text-primary hover:bg-primary/10 shadow-[0_0_8px_rgba(0,240,255,0.15)]'
+            }`}
+          >
+            {isMuted ? '🔇 Audio Off' : '🔊 Audio On'}
+          </button>
+          
+          <button
             onClick={() => setShowOnboarding(true)}
-            className="border border-primary/30 text-primary hover:bg-primary hover:text-background px-3 py-1.5 rounded transition-all text-[10px] uppercase font-bold tracking-wider"
+            className="border border-primary/30 text-primary hover:bg-primary hover:text-background px-3 py-1.5 rounded transition-all text-[10px] uppercase font-bold tracking-wider cursor-pointer"
           >
             Guidebook
           </button>
