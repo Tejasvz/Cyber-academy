@@ -51,6 +51,7 @@ const Dashboard = () => {
     bringToFront,
     updateWindowPosition,
     updateWindowSize,
+    resetLayout,
   } = useWindowStore();
 
   const { startDialogueSequence } = useDialogueStore();
@@ -65,6 +66,7 @@ const Dashboard = () => {
   const [bootProgress, setBootProgress] = useState(0);
   const [bootLines, setBootLines] = useState<string[]>([]);
   const [timeStr, setTimeStr] = useState('');
+  const [showStartMenu, setShowStartMenu] = useState(false);
 
   // Clock effect
   useEffect(() => {
@@ -1496,12 +1498,69 @@ const Dashboard = () => {
       <footer className="h-12 bg-surface/90 border-t border-primary/20 flex items-center justify-between px-6 z-40 select-none shrink-0 shadow-neon">
         <div className="flex items-center gap-3">
           {/* Quick AI Menu Start */}
-          <button
-            onClick={() => setShowOnboarding(true)}
-            className="flex items-center gap-2 bg-primary/10 border border-primary/30 hover:bg-primary/20 px-3 py-1.5 rounded text-[10px] font-bold text-primary uppercase tracking-widest transition-all"
-          >
-            <span>💻</span> OS Menu
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => { playUiClick(); setShowStartMenu(!showStartMenu); }}
+              className="flex items-center gap-2 bg-primary/10 border border-primary/30 hover:bg-primary/20 px-3 py-1.5 rounded text-[10px] font-bold text-primary uppercase tracking-widest transition-all cursor-pointer"
+            >
+              <span>💻</span> OS Start
+            </button>
+            
+            {showStartMenu && (
+              <div className="absolute bottom-10 left-0 w-52 bg-[#0c0c12]/95 border border-primary/30 rounded-lg p-2 flex flex-col gap-1 z-50 shadow-[0_0_20px_rgba(0,240,255,0.2)] font-mono text-[9px] text-textMain animate-[fade-in_0.15s_ease-out]">
+                <div className="border-b border-primary/20 pb-1.5 mb-1 px-2 text-textMuted uppercase text-[8px] font-bold">
+                  Classified Applications
+                </div>
+                
+                <button
+                  onClick={() => { playUiClick(); openWindow('curriculum'); setShowStartMenu(false); }}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
+                >
+                  <span>🛰️</span> Mission Control
+                </button>
+                <button
+                  onClick={() => { playUiClick(); openWindow('terminal'); setShowStartMenu(false); }}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
+                >
+                  <span>💻</span> Terminal Console
+                </button>
+                <button
+                  onClick={() => { playUiClick(); openWindow('lesson'); setShowStartMenu(false); }}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
+                >
+                  <span>📑</span> Operator Database
+                </button>
+                <button
+                  onClick={() => { playUiClick(); openWindow('ai_assistant'); setShowStartMenu(false); }}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
+                >
+                  <span>👁️</span> AI Daemon: Aurelia
+                </button>
+                <button
+                  onClick={() => { playUiClick(); openWindow('conspiracy'); setShowStartMenu(false); }}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
+                >
+                  <span>🕸️</span> Conspiracy Board
+                </button>
+                <button
+                  onClick={() => { playUiClick(); openWindow('world_map'); setShowStartMenu(false); }}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
+                >
+                  <span>🗺️</span> Sector Grid Map
+                </button>
+                
+                <div className="border-t border-primary/20 my-1 pt-1.5 px-2 text-textMuted uppercase text-[8px] font-bold">
+                  System Utilities
+                </div>
+                <button
+                  onClick={() => { playUiClick(); resetLayout(); setShowStartMenu(false); }}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-error/10 hover:text-error transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
+                >
+                  <span>🔄</span> Reset Windows
+                </button>
+              </div>
+            )}
+          </div>
           
           <div className="h-4 w-[1px] bg-primary/20 mx-1"></div>
 
@@ -1531,6 +1590,8 @@ const Dashboard = () => {
                   {id === 'curriculum' && 'Curriculum'}
                   {id === 'lesson' && 'Lesson Database'}
                   {id === 'ai_assistant' && 'OS Daemon: Aurelia'}
+                  {id === 'conspiracy' && 'Conspiracy Board'}
+                  {id === 'world_map' && 'Sector Map'}
                 </button>
               );
             })}
