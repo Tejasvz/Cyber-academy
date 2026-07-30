@@ -8,6 +8,7 @@ import { useWindowStore } from '../../store/windowStore';
 import { DialogueFeed } from '../../components/Dialogue/DialogueFeed';
 import { useDialogueStore } from '../../store/dialogueStore';
 import { useAudioStore } from '../../store/audioStore';
+import { TapeDecryptor } from '../../components/Dialogue/TapeDecryptor';
 
 const Dashboard = () => {
   const { user, token, logout, login } = useAuth();
@@ -810,10 +811,11 @@ const Dashboard = () => {
             {/* Scrollable Tab panel content */}
             <div className="flex-grow overflow-y-auto pr-1 mb-3 scrollbar min-h-0">
               {activeTab === 'theory' && (
-                <div className="space-y-2 text-xs">
-                  <h3 className="text-secondary font-bold text-[10px] uppercase tracking-wider select-none">[CONCEPT THEORETICS]</h3>
-                  <p className="text-textMain leading-relaxed text-xs">{activeLesson.theory}</p>
-                </div>
+                <TapeDecryptor 
+                  lessonId={activeLesson.id}
+                  title={activeLesson.title}
+                  theoryText={activeLesson.theory}
+                />
               )}
 
               {activeTab === 'sandbox' && (
