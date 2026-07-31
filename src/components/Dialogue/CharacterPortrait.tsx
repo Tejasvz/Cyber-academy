@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface CharacterPortraitProps {
   speaker: 'aurelia' | 'hesper' | 'kaelen' | 'byte' | 'operator';
@@ -11,6 +11,32 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
   expression,
   isTyping,
 }) => {
+  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const portraitElement = document.getElementById(`portrait-${speaker}`);
+      if (!portraitElement) return;
+
+      const rect = portraitElement.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      // Calculate normalized delta coordinates relative to center (-1 to 1)
+      const dx = (e.clientX - centerX) / (window.innerWidth / 2);
+      const dy = (e.clientY - centerY) / (window.innerHeight / 2);
+
+      // Clamp offset for small translation sweeps
+      setMouseOffset({
+        x: Math.max(-5, Math.min(5, dx * 6)),
+        y: Math.max(-4, Math.min(4, dy * 5)),
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [speaker]);
+
   // Select color themes according to faction lore
   const getThemeColors = () => {
     switch (speaker) {
@@ -57,7 +83,10 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
   const showTalk = isTyping || expression === 'talking';
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden bg-[#0a0a0f]/90 select-none">
+    <div 
+      id={`portrait-${speaker}`}
+      className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden bg-[#0a0a0f]/90 select-none"
+    >
       {/* Dynamic Keyframes Injector */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes blink-portrait {
@@ -140,11 +169,11 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
             /* Aurelia: Elegant crystalline AI core */
             <g stroke={colors.hex} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="50,15 80,35 80,65 50,85 20,65 20,35" strokeDasharray="300" strokeDashoffset="0" />
-              <polygon points="50,25 72,40 72,60 50,75 28,60 28,40" strokeOpacity="0.4" />
+              <polygon points="50,25 72,40 72,60 50,75 28,60 28,40" strokeOpacity="0.4" style={{ transform: `translate(${mouseOffset.x * 0.3}px, ${mouseOffset.y * 0.3}px)`, transformOrigin: '50px 50px' }} />
               {/* Glowing vertical core line */}
-              <line x1="50" y1="20" x2="50" y2="80" strokeDasharray="4, 4" strokeOpacity="0.7" />
+              <line x1="50" y1="20" x2="50" y2="80" strokeDasharray="4, 4" strokeOpacity="0.7" style={{ transform: `translate(${mouseOffset.x * 0.5}px, ${mouseOffset.y * 0.5}px)`, transformOrigin: '50px 50px' }} />
               {/* Blinking eyes */}
-              <g style={{ animation: 'blink-portrait 4.2s infinite', transformOrigin: '50px 45px' }}>
+              <g style={{ animation: 'blink-portrait 4.2s infinite', transform: `translate(${mouseOffset.x * 0.8}px, ${mouseOffset.y * 0.8}px)`, transformOrigin: '50px 45px' }}>
                 <line x1="33" y1="45" x2="45" y2="45" strokeWidth="4" />
                 <line x1="55" y1="45" x2="67" y2="45" strokeWidth="4" />
               </g>
@@ -155,16 +184,16 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
             /* Hesper: Robust shield tech visor */
             <g stroke={colors.hex} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20,25 L80,25 L85,45 L75,75 L50,85 L25,75 L15,45 Z" />
-              <rect x="28" y="38" width="44" height="12" rx="2" fill={`${colors.hex}22`} />
-              {/* Visor Scan dots */}
-              <circle cx="35" cy="44" r="1.5" fill={colors.hex} />
-              <circle cx="65" cy="44" r="1.5" fill={colors.hex} />
-              {/* Visor Blinking Sweep */}
-              <g style={{ animation: 'blink-portrait 3.6s infinite', transformOrigin: '50px 44px' }}>
-                <line x1="28" y1="44" x2="72" y2="44" strokeWidth="1.5" strokeOpacity="0.9" />
+              <g style={{ transform: `translate(${mouseOffset.x * 0.7}px, ${mouseOffset.y * 0.7}px)`, transformOrigin: '50px 50px' }}>
+                <rect x="28" y="38" width="44" height="12" rx="2" fill={`${colors.hex}22`} />
+                <circle cx="35" cy="44" r="1.5" fill={colors.hex} />
+                <circle cx="65" cy="44" r="1.5" fill={colors.hex} />
+                <g style={{ animation: 'blink-portrait 3.6s infinite', transformOrigin: '50px 44px' }}>
+                  <line x1="28" y1="44" x2="72" y2="44" strokeWidth="1.5" strokeOpacity="0.9" />
+                </g>
               </g>
               {/* Tactical collar lines */}
-              <path d="M30,80 L38,90 L62,90 L70,80" strokeWidth="2" strokeOpacity="0.6" />
+              <path d="M30,80 L38,90 L62,90 L70,80" strokeWidth="2" strokeOpacity="0.6" style={{ transform: `translate(${mouseOffset.x * 0.2}px, ${mouseOffset.y * 0.2}px)`, transformOrigin: '50px 85px' }} />
             </g>
           )}
 
@@ -172,18 +201,20 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
             /* Kaelen: Decentralized node network mask */
             <g stroke={colors.hex} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M50,15 L78,28 L78,55 L50,85 L22,55 L22,28 Z" />
-              {/* Decentralized node linkage lines */}
-              <line x1="50" y1="15" x2="50" y2="50" strokeWidth="1.5" strokeOpacity="0.4" />
-              <line x1="22" y1="28" x2="50" y2="50" strokeWidth="1.5" strokeOpacity="0.4" />
-              <line x1="78" y1="28" x2="50" y2="50" strokeWidth="1.5" strokeOpacity="0.4" />
-              {/* Eye nodes blinking */}
-              <g style={{ animation: 'blink-portrait 4.8s infinite', transformOrigin: '50px 38px' }}>
-                <circle cx="36" cy="38" r="3.5" fill={colors.hex} />
-                <circle cx="64" cy="38" r="3.5" fill={colors.hex} />
+              <g style={{ transform: `translate(${mouseOffset.x * 0.6}px, ${mouseOffset.y * 0.6}px)`, transformOrigin: '50px 50px' }}>
+                {/* Decentralized node linkage lines */}
+                <line x1="50" y1="15" x2="50" y2="50" strokeWidth="1.5" strokeOpacity="0.4" />
+                <line x1="22" y1="28" x2="50" y2="50" strokeWidth="1.5" strokeOpacity="0.4" />
+                <line x1="78" y1="28" x2="50" y2="50" strokeWidth="1.5" strokeOpacity="0.4" />
+                {/* Eye nodes blinking */}
+                <g style={{ animation: 'blink-portrait 4.8s infinite', transformOrigin: '50px 38px' }}>
+                  <circle cx="36" cy="38" r="3.5" fill={colors.hex} />
+                  <circle cx="64" cy="38" r="3.5" fill={colors.hex} />
+                </g>
+                {/* Sub-node details */}
+                <circle cx="50" cy="50" r="2.5" fill={colors.hex} />
+                <circle cx="50" cy="72" r="2" fill={colors.hex} strokeWidth="1" />
               </g>
-              {/* Sub-node details */}
-              <circle cx="50" cy="50" r="2.5" fill={colors.hex} />
-              <circle cx="50" cy="72" r="2" fill={colors.hex} strokeWidth="1" />
             </g>
           )}
 
@@ -195,11 +226,13 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
               {/* CRT monitor stand */}
               <path d="M40,70 L30,90 L70,90 L60,70" strokeWidth="2" />
               {/* Glitching crosshair eyes */}
-              <g style={{ animation: 'blink-portrait 2.8s infinite', transformOrigin: '50px 42px' }}>
-                <line x1="30" y1="36" x2="42" y2="48" />
-                <line x1="42" y1="36" x2="30" y2="48" />
-                <line x1="58" y1="36" x2="70" y2="48" />
-                <line x1="70" y1="36" x2="58" y2="48" />
+              <g style={{ transform: `translate(${mouseOffset.x * 0.8}px, ${mouseOffset.y * 0.8}px)`, transformOrigin: '50px 50px' }}>
+                <g style={{ animation: 'blink-portrait 2.8s infinite', transformOrigin: '50px 42px' }}>
+                  <line x1="30" y1="36" x2="42" y2="48" />
+                  <line x1="42" y1="36" x2="30" y2="48" />
+                  <line x1="58" y1="36" x2="70" y2="48" />
+                  <line x1="70" y1="36" x2="58" y2="48" />
+                </g>
               </g>
             </g>
           )}
@@ -210,10 +243,12 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
               <circle cx="50" cy="45" r="30" />
               <path d="M22,55 C22,75 35,88 50,88 C65,88 78,75 78,55" />
               {/* Tactical HUD crosshair */}
-              <circle cx="50" cy="45" r="8" strokeDasharray="3, 3" strokeOpacity="0.6" />
-              {/* HUD grid lines */}
-              <line x1="50" y1="10" x2="50" y2="25" strokeOpacity="0.5" />
-              <line x1="50" y1="65" x2="50" y2="80" strokeOpacity="0.5" />
+              <g style={{ transform: `translate(${mouseOffset.x * 0.5}px, ${mouseOffset.y * 0.5}px)`, transformOrigin: '50px 50px' }}>
+                <circle cx="50" cy="45" r="8" strokeDasharray="3, 3" strokeOpacity="0.6" />
+                {/* HUD grid lines */}
+                <line x1="50" y1="10" x2="50" y2="25" strokeOpacity="0.5" />
+                <line x1="50" y1="65" x2="50" y2="80" strokeOpacity="0.5" />
+              </g>
             </g>
           )}
         </svg>
@@ -249,4 +284,5 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
     </div>
   );
 };
+
 export default CharacterPortrait;
