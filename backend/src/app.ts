@@ -4,6 +4,7 @@ import cors from 'cors';
 import authRoutes from './routes/authRoutes';
 import curriculumRoutes from './routes/curriculumRoutes';
 import progressRoutes from './routes/progressRoutes';
+import commandRoutes from './routes/commandRoutes';
 import { authenticate } from './middleware/authMiddleware';
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/curriculum', authenticate, curriculumRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/lessons', commandRoutes);
 
 const PORT = process.env.PORT || 3000;
 

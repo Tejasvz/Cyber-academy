@@ -37,3 +37,28 @@ export const fetchCurriculum = async (token: string): Promise<Curriculum> => {
   });
   return response.data;
 };
+
+export interface CommandResponse {
+  output: string;
+  currentDir: string;
+  isRootShell: boolean;
+  isSubShell: boolean;
+  isInterceptState: boolean;
+}
+
+export const executeTerminalCommand = async (
+  lessonId: string,
+  command: string,
+  token: string
+): Promise<CommandResponse> => {
+  const response = await axios.post(
+    `${API_BASE_URL}/api/lessons/${lessonId}/command`,
+    { command },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+  return response.data;
+};

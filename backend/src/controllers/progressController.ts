@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { generateFlag } from '../utils/flagUtils';
 
 // We assign an arbitrary XP value for MVP completion
 const XP_PER_LESSON = 100;
@@ -9,10 +10,18 @@ const XP_PER_LEVEL = 500;
 export const completeLesson = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { lessonId } = req.params;
+    const { flag } = req.body;
     const userId = req.userId;
 
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    // Securely validate flag on backend
+    const expectedFlag = generateFlag(userId!, lessonId!);
+    if (!flag || flag.trim().toLowerCase() !== expectedFlag.toLowerCase()) {
+      res.status(400).json({ error: 'Incorrect target flag. Review telemetry and command outputs.' });
       return;
     }
 
@@ -31,34 +40,15 @@ export const completeLesson = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    // Ensure the lesson exists in DB for foreign key constraint, 
-    // OR we can just store the string lessonId.
-    // Wait, our Prisma schema has a relation to Lesson model. 
-    // If the database is empty, it will fail the foreign key constraint.
-    // Let's create a dummy module and lesson if it doesn't exist to satisfy the FK, 
-    // or just bypass it. For MVP, we can upsert the lesson ID into the DB.
-    
-    // Upsert Module (dummy)
-    const module = await prisma.module.upsert({
-      where: { id: 'MOCK_MODULE' },
-      update: {},
-      create: { id: 'MOCK_MODULE', title: 'System', description: 'System', orderIndex: 0 }
+    // Ensure the lesson exists in the DB
+    const dbLesson = await prisma.lesson.findUnique({
+      where: { id: lessonId }
     });
 
-    // Upsert Lesson
-    await prisma.lesson.upsert({
-      where: { id: lessonId },
-      update: {},
-      create: {
-        id: lessonId,
-        moduleId: module.id,
-        title: lessonId,
-        content: 'Content',
-        difficulty: 'Beginner',
-        xpReward: XP_PER_LESSON,
-        orderIndex: 0
-      }
-    });
+    if (!dbLesson) {
+      res.status(404).json({ error: 'Lesson not found in curriculum database' });
+      return;
+    }
 
     // Create progress
     await prisma.progress.create({
@@ -77,7 +67,8 @@ export const completeLesson = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    const newXp = user.xp + XP_PER_LESSON;
+    const xpGained = dbLesson.xpReward;
+    const newXp = user.xp + xpGained;
     const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
 
     const updatedUser = await prisma.user.update({
@@ -87,7 +78,7 @@ export const completeLesson = async (req: AuthRequest, res: Response): Promise<v
 
     res.json({
       message: 'Lesson completed',
-      xpGained: XP_PER_LESSON,
+      xpGained,
       user: {
         id: updatedUser.id,
         username: updatedUser.username,

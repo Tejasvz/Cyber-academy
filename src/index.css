@@ -2,8 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-primary: #00f0ff;
+  --color-secondary: #ff00ff;
+  --color-primary-glow: rgba(0, 240, 255, 0.4);
+  --color-surface-border: rgba(0, 240, 255, 0.2);
+}
+
 @layer base {
   body {
-    @apply bg-background text-textMain font-sans antialiased;
+    @apply bg-background text-textMain font-sans antialiased relative overflow-hidden;
   }
 }
+
+/* CRT Screen Scanline effect */
+.scanlines::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+  z-index: 100;
+  background-size: 100% 4px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* Glassmorphism scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(13, 13, 18, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary);
+}
+
+/* Neon glow for headers */
+.text-shadow-neon {
+  text-shadow: 0 0 8px var(--color-primary-glow);
+}
+
+/* CRT screen refresh pulse & flicker keyframes */
+@keyframes crt-flicker {
+  0% { opacity: 0.985; }
+  50% { opacity: 0.995; }
+  100% { opacity: 0.985; }
+}
+
+@keyframes scanline-pulse {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+/* Chromatic Jitter & Visual Glitch Keyframes */
+@keyframes glitch-shake {
+  0% { transform: translate(0, 0) skew(0deg); }
+  10% { transform: translate(-2px, 1px) skew(-1deg); }
+  20% { transform: translate(1px, -1px) skew(1deg); }
+  30% { transform: translate(-1px, 2px) skew(0deg); }
+  40% { transform: translate(2px, -2px) skew(-2deg); }
+  50% { transform: translate(-2px, 1px) skew(1deg); }
+  60% { transform: translate(1px, -1px) skew(0deg); }
+  70% { transform: translate(2px, 2px) skew(2deg); }
+  80% { transform: translate(-1px, -2px) skew(-1deg); }
+  90% { transform: translate(1px, 1px) skew(0deg); }
+  100% { transform: translate(0, 0) skew(0deg); }
+}
+
+.glow-active {
+  animation: crt-flicker 0.15s infinite;
+}
+
+.glitch-window-active {
+  animation: glitch-shake 0.3s cubic-bezier(.25, .46, .45, .94) both;
+  border-color: #ff2a2a !important;
+}
+
+/* Animated radar/satellite sweep overlay */
+@keyframes sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.radar-sweep {
+  animation: sweep 12s linear infinite;
+  transform-origin: center;
+}
+

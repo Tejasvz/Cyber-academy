@@ -28,14 +28,22 @@ model Module {
 }
 
 model Lesson {
-  id             String    @id @default(uuid())
+  id             String     @id
   moduleId       String
   title          String
-  content        String    
+  technique      String
+  theory         String
+  guide          String?
+  lab            String
+  opSec          String
+  flag           String
+  cheatSheet     String?
+  blueTeamLogs   String?
+  remediation    Json?
   difficulty     String    
   xpReward       Int
   orderIndex     Int
-  module         Module    @relation(fields: [moduleId], references: [id])
+  module         Module     @relation(fields: [moduleId], references: [id])
   progress       Progress[]
 }
 

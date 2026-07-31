@@ -9,8 +9,8 @@ export default {
       colors: {
         background: '#0d0d12', // Near-black/charcoal
         surface: '#171721',
-        primary: '#00f0ff', // Neon cyan
-        secondary: '#ff00ff', // Electric purple/magenta
+        primary: 'var(--color-primary, #00f0ff)',
+        secondary: 'var(--color-secondary, #ff00ff)',
         success: '#39ff14', // Green
         warning: '#ffb000', // Amber
         error: '#ff2a2a', // Red
@@ -22,7 +22,7 @@ export default {
         sans: ['Inter', 'sans-serif'],
       },
       boxShadow: {
-        'neon': '0 0 8px rgba(0, 240, 255, 0.4)', // Subtle cyan glow
+        'neon': '0 0 10px var(--color-primary-glow, rgba(0, 240, 255, 0.4))',
       }
     },
   },
