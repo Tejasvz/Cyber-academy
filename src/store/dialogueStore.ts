@@ -28,6 +28,8 @@ interface DialogueStore {
   isSequencePlaying: boolean;
   activeSpeaker: string | null;
   activeExpression: string | null;
+  activeCoSpeaker: string | null;
+  activeCoExpression: string | null;
   isTextTyping: boolean;
   
   // Actions
@@ -53,6 +55,8 @@ export const useDialogueStore = create<DialogueStore>((set, get) => ({
   isSequencePlaying: false,
   activeSpeaker: null,
   activeExpression: 'neutral',
+  activeCoSpeaker: null,
+  activeCoExpression: null,
   isTextTyping: false,
 
   startDialogueSequence: (sequence) => {
@@ -65,6 +69,8 @@ export const useDialogueStore = create<DialogueStore>((set, get) => ({
       isSequencePlaying: true,
       activeSpeaker: firstNode.speaker,
       activeExpression: firstNode.expression || 'neutral',
+      activeCoSpeaker: firstNode.coSpeaker || null,
+      activeCoExpression: firstNode.coSpeakerExpression || null,
       isTextTyping: true,
     });
   },
@@ -80,6 +86,8 @@ export const useDialogueStore = create<DialogueStore>((set, get) => ({
         currentNodeIndex: nextIndex,
         activeSpeaker: nextNode.speaker,
         activeExpression: nextNode.expression || 'neutral',
+        activeCoSpeaker: nextNode.coSpeaker || null,
+        activeCoExpression: nextNode.coSpeakerExpression || null,
         isTextTyping: true,
       });
     } else {
@@ -89,6 +97,8 @@ export const useDialogueStore = create<DialogueStore>((set, get) => ({
         currentNodeIndex: -1,
         isSequencePlaying: false,
         activeSpeaker: null,
+        activeCoSpeaker: null,
+        activeCoExpression: null,
         isTextTyping: false,
       });
     }
@@ -100,6 +110,8 @@ export const useDialogueStore = create<DialogueStore>((set, get) => ({
       currentNodeIndex: -1,
       isSequencePlaying: false,
       activeSpeaker: null,
+      activeCoSpeaker: null,
+      activeCoExpression: null,
       isTextTyping: false,
     });
   },
