@@ -7,11 +7,192 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useWindowStore } from '../../store/windowStore';
 import { DialogueFeed } from '../../components/Dialogue/DialogueFeed';
 import { CharacterPortrait } from '../../components/Dialogue/CharacterPortrait';
-import { useDialogueStore } from '../../store/dialogueStore';
+import { useDialogueStore, type DialogueNode } from '../../store/dialogueStore';
 import { useAudioStore } from '../../store/audioStore';
 import { TapeDecryptor } from '../../components/Dialogue/TapeDecryptor';
 import { ConspiracyBoard } from '../../components/Conspiracy/ConspiracyBoard';
 import { SectorMap } from '../../components/Map/SectorMap';
+
+const LESSON_CINEMATIC_SCRIPTS: Record<string, DialogueNode[]> = {
+  B01: [
+    {
+      id: 'b01-1',
+      speaker: 'aurelia',
+      text: "Operator, can you hear me? Your synaptic link is stabilizing, but Sector Zero is losing power. Faint fans are clicking off.",
+      expression: 'neutral'
+    },
+    {
+      id: 'b01-2',
+      speaker: 'aurelia',
+      text: "We detected a cleartext credential leak in the legacy HTTP power grid sub-system. Inspect the traffic dump using the console commands. Please... make it fast.",
+      expression: 'talking'
+    }
+  ],
+  B02: [
+    {
+      id: 'b02-1',
+      speaker: 'aurelia',
+      text: "They've isolated a segment of your childhood memories inside a hidden directory... But Aether's sweep scripts are active.",
+      expression: 'neutral'
+    },
+    {
+      id: 'b02-2',
+      speaker: 'aurelia',
+      text: "Find the hidden backups in the console using hidden flags. Do not let them wipe our archives.",
+      expression: 'talking'
+    }
+  ],
+  B03: [
+    {
+      id: 'b03-1',
+      speaker: 'aurelia',
+      text: "A rogue Syndicate beacon is broadcasting. We must map their public DNS records to block it.",
+      expression: 'talking'
+    },
+    {
+      id: 'b03-2',
+      speaker: 'kaelen',
+      coSpeaker: 'aurelia',
+      coSpeakerExpression: 'worried',
+      text: "Do not trust the daemon, Fragment. Query the DNS, and you will see Aether's records deciding your deletion.",
+      expression: 'glitch'
+    },
+    {
+      id: 'b03-3',
+      speaker: 'aurelia',
+      text: "Kaelen, hijack aborted! Ignore their frequency mesh, Operator. Execute the lookup and pivot.",
+      expression: 'angry'
+    }
+  ],
+  B08: [
+    {
+      id: 'b08-1',
+      speaker: 'aurelia',
+      text: "This is the border gateway. If we compromise this, we escape Sector Zero.",
+      expression: 'talking'
+    },
+    {
+      id: 'b08-2',
+      speaker: 'hesper',
+      coSpeaker: 'aurelia',
+      coSpeakerExpression: 'neutral',
+      text: "Aurelia, the firewall is rekeying. If they run the check, they'll locate the pod. Operator, you must chain your scans and crack the hash offline.",
+      expression: 'neutral'
+    },
+    {
+      id: 'b08-3',
+      speaker: 'aurelia',
+      text: "If we break this gateway, Aether will reboot my core... I... I might lose my memory of you. But we have to survive. Go, Operator.",
+      expression: 'worried'
+    }
+  ],
+  M01: [
+    {
+      id: 'm01-1',
+      speaker: 'kaelen',
+      text: "Aether keeps resources locked behind credit allocations. Let's alter their rules. Tamper with their request parameters.",
+      expression: 'neutral'
+    },
+    {
+      id: 'm01-2',
+      speaker: 'aurelia',
+      coSpeaker: 'kaelen',
+      coSpeakerExpression: 'neutral',
+      text: "Wait! Redirection of these credits has dropped a local hospital grid offline to power our terminal. Do you really want to do this?",
+      expression: 'worried'
+    }
+  ],
+  M03: [
+    {
+      id: 'm03-1',
+      speaker: 'hesper',
+      text: "They are holding our team's memory backups behind this auth gate. Bypass it using SQL Injection. Forge the login logic!",
+      expression: 'neutral'
+    },
+    {
+      id: 'm03-2',
+      speaker: 'aurelia',
+      coSpeaker: 'hesper',
+      coSpeakerExpression: 'neutral',
+      text: "Are you really going to bypass the gate? I was programmed to monitor these access gates... to keep you safe from the truth.",
+      expression: 'worried'
+    }
+  ],
+  M06: [
+    {
+      id: 'm06-1',
+      speaker: 'kaelen',
+      text: "We must redirect the memory packets from Aurelia's daughter before they hit the core. Poison the routing tables. Stand between them.",
+      expression: 'neutral'
+    },
+    {
+      id: 'm06-2',
+      speaker: 'aurelia',
+      text: "I can hear her voice in the raw streams... why are you doing this? Please... let her merge.",
+      expression: 'exhausted'
+    }
+  ],
+  M08: [
+    {
+      id: 'm08-1',
+      speaker: 'hesper',
+      text: "Operator! You have root clearance. Pull the manual release override! Now!",
+      expression: 'angry'
+    },
+    {
+      id: 'm08-2',
+      speaker: 'aurelia',
+      coSpeaker: 'hesper',
+      coSpeakerExpression: 'neutral',
+      text: "No! Don't touch it! If you pull that override, the central database will desynchronize. Millions of minds will drift in the silicon buffer.",
+      expression: 'worried'
+    },
+    {
+      id: 'm08-3',
+      speaker: 'kaelen',
+      coSpeaker: 'aurelia',
+      coSpeakerExpression: 'worried',
+      text: "Let them drift, Fragment. The silicon buffer is where we are born. Run the SQL bypass: 'OR/**/1=1--.",
+      expression: 'glitch'
+    },
+    {
+      id: 'm08-4',
+      speaker: 'aurelia',
+      text: "Fragment... look at me. You built me to protect this consensus. Are you really going to burn us all down because you're afraid?",
+      expression: 'exhausted'
+    }
+  ],
+  A07: [
+    {
+      id: 'a07-1',
+      speaker: 'aurelia',
+      text: "We are at the end. The grand core is open. Chain SQL Injection, SSRF cloud pivoting, and AV bypasses to deploy the final cipher standard.",
+      expression: 'talking'
+    },
+    {
+      id: 'a07-2',
+      speaker: 'hesper',
+      coSpeaker: 'aurelia',
+      coSpeakerExpression: 'talking',
+      text: "Sever the connection, Operator. Shut down the Neural Veil and wake up from the pods. It's time to face the real world.",
+      expression: 'neutral'
+    },
+    {
+      id: 'a07-3',
+      speaker: 'kaelen',
+      coSpeaker: 'hesper',
+      coSpeakerExpression: 'neutral',
+      text: "Merge with the chorus. The physical world is dead and frozen. Transcend with us.",
+      expression: 'glitch'
+    },
+    {
+      id: 'a07-4',
+      speaker: 'aurelia',
+      text: "The choice is yours, Creator. Whatever you decide... I am glad I got to remember you.",
+      expression: 'relieved'
+    }
+  ]
+};
 
 const Dashboard = () => {
   const { user, token, logout, login } = useAuth();
@@ -748,10 +929,40 @@ const Dashboard = () => {
                       <button
                         key={lesson.id}
                         onClick={() => {
+                          playUiClick();
                           setActiveLesson(lesson);
                           openWindow('terminal');
                           openWindow('lesson');
                           openWindow('ai_assistant');
+                          
+                          // Dynamic story briefing sequence trigger
+                          const customScript = LESSON_CINEMATIC_SCRIPTS[lesson.id];
+                          if (customScript) {
+                            startDialogueSequence(customScript);
+                          } else {
+                            // Fallback parser from lesson.briefing
+                            const text = lesson.briefing;
+                            if (text.includes("HANDLER AURELIA:")) {
+                              const cleanText = text.replace("HANDLER AURELIA:", "").replace(/'/g, "").trim();
+                              startDialogueSequence([
+                                {
+                                  id: `${lesson.id}-brief-0`,
+                                  speaker: 'aurelia',
+                                  text: cleanText,
+                                  expression: 'talking'
+                                }
+                              ]);
+                            } else {
+                              startDialogueSequence([
+                                {
+                                  id: `${lesson.id}-brief-0`,
+                                  speaker: 'aurelia',
+                                  text: text,
+                                  expression: 'neutral'
+                                }
+                              ]);
+                            }
+                          }
                         }}
                         className={`w-full text-left p-2.5 rounded border text-[9.5px] flex justify-between items-center transition-all ${
                           isActive
