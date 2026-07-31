@@ -10,12 +10,13 @@ interface TerminalProps {
   activeLesson: Lesson | null;
   onSuccess?: (flag: string) => void;
   onCommand?: (cmd: string) => void;
+  onFailure?: () => void;
   completed?: boolean;
   width?: number;
   height?: number;
 }
 
-const Terminal: React.FC<TerminalProps> = ({ activeLesson, onSuccess, onCommand, width, height }) => {
+const Terminal: React.FC<TerminalProps> = ({ activeLesson, onSuccess, onCommand, onFailure, width, height }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -355,6 +356,9 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, onSuccess, onCommand,
       console.error('Command execution failed:', error);
       playFailureSweep();
       term.writeln('\r\n[-] Error: Command execution failed. Connection to cyber range node lost.');
+      if (onFailure) {
+        onFailure();
+      }
     }
 
     term.write(getPromptString());

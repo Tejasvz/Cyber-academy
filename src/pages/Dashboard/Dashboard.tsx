@@ -22,6 +22,8 @@ const Dashboard = () => {
 
   // Gameplay & tab states
   const [activeTab, setActiveTab] = useState<'theory' | 'sandbox' | 'blueteam' | 'remediation'>('theory');
+  const [_consecutiveErrors, setConsecutiveErrors] = useState(0);
+  const [lastActivity, setLastActivity] = useState(Date.now());
 
   // Local persistent achievements and reports
   const [badges, setBadges] = useState<string[]>([]);
@@ -53,7 +55,7 @@ const Dashboard = () => {
     resetLayout,
   } = useWindowStore();
 
-  const { startDialogueSequence } = useDialogueStore();
+  const { startDialogueSequence, isSequencePlaying } = useDialogueStore();
   const {
     initializeAudio,
     playUiClick,
@@ -293,6 +295,68 @@ const Dashboard = () => {
     }
   }, [activeLesson, bootPhase]);
 
+  // Capture global operator activities to reset the idle clock
+  useEffect(() => {
+    const resetIdle = () => setLastActivity(Date.now());
+    window.addEventListener('keypress', resetIdle);
+    window.addEventListener('mousedown', resetIdle);
+    return () => {
+      window.removeEventListener('keypress', resetIdle);
+      window.removeEventListener('mousedown', resetIdle);
+    };
+  }, []);
+
+  // Idle Performance Interjections
+  useEffect(() => {
+    if (bootPhase !== 'completed' || isSequencePlaying || !activeLesson) return;
+
+    const interval = setInterval(() => {
+      const secondsIdle = (Date.now() - lastActivity) / 1000;
+      if (secondsIdle >= 45) {
+        // Reset idle activity to prevent spamming
+        setLastActivity(Date.now());
+
+        // Select a randomized whisper dialogue node from Aurelia
+        const whispers = [
+          "Operator, I'm detecting slight latency drifts in our network anchor. Are you tracing the nodes?",
+          "Don't get distracted. Aether's scan sweeps are actively sniffing the subnet ports as we wait.",
+          "If you're stuck, ask me for a hint. Aurelia's cognitive databases are synchronized."
+        ];
+        const randomWhisper = whispers[Math.floor(Math.random() * whispers.length)];
+        
+        startDialogueSequence([
+          {
+            id: `idle-${Date.now()}`,
+            speaker: 'aurelia',
+            text: randomWhisper,
+            expression: 'worried'
+          }
+        ]);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [lastActivity, bootPhase, isSequencePlaying, activeLesson, startDialogueSequence]);
+
+  // Terminal Failure Performance Intervention
+  const handleTerminalFailure = () => {
+    setConsecutiveErrors(prev => {
+      const next = prev + 1;
+      if (next >= 3 && activeLesson) {
+        startDialogueSequence([
+          {
+            id: `fail-intervention-${Date.now()}`,
+            speaker: 'aurelia',
+            text: `Operator, the gateway connection is blocking our execution payload. Look at the port outputs or review the documentation target.`,
+            expression: 'worried'
+          }
+        ]);
+        return 0; // Reset counter after dialogue trigger
+      }
+      return next;
+    });
+  };
+
   // Helper to load localStorage safely
   const getLocalStorage = (key: string, defaultValue: any) => {
     if (!user?.id) return defaultValue;
@@ -433,6 +497,7 @@ const Dashboard = () => {
     try {
       const data = await completeLesson(activeLesson.id, inputFlag.trim(), token);
       setCompletedLessons(prev => new Set(prev).add(activeLesson.id));
+      setConsecutiveErrors(0);
       playSuccessChime();
       
       // Setup Breach Overlay Details
@@ -1544,6 +1609,7 @@ const Dashboard = () => {
             <Terminal 
               activeLesson={activeLesson}
               onSuccess={(flag) => handleVerifyFlag(flag)}
+              onFailure={() => handleTerminalFailure()}
               completed={activeLesson ? completedLessons.has(activeLesson.id) : false}
               width={windows.terminal?.width || 730}
               height={windows.terminal?.height || 440}
