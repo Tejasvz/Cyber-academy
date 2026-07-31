@@ -12,6 +12,9 @@ export interface Lesson {
   flag?: string;
   cheatSheet?: string;
   blueTeamLogs?: string;
+  briefing: string;
+  threatAssessment?: string;
+  loreUnlock?: string;
   remediation?: {
     vulnerableCode: string;
     language: string;

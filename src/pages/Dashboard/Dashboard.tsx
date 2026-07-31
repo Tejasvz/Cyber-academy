@@ -189,7 +189,7 @@ const LESSON_CINEMATIC_SCRIPTS: Record<string, DialogueNode[]> = {
       id: 'a07-4',
       speaker: 'aurelia',
       text: "The choice is yours, Creator. Whatever you decide... I am glad I got to remember you.",
-      expression: 'relieved'
+      expression: 'neutral'
     }
   ]
 };
@@ -257,7 +257,7 @@ const Dashboard = () => {
         }
       }
     } catch (e) {}
-    return 'completed';
+    return 'power_loss';
   });
   const [bootTextIndex, setBootTextIndex] = useState(0);
   const [bootstrapInput, setBootstrapInput] = useState('');
@@ -1369,8 +1369,18 @@ const Dashboard = () => {
             )}
 
             {bootPhase === 'voice_crack' && (
-              <div className="space-y-4 font-mono">
+              <div className="space-y-4 font-mono flex flex-col items-center">
                 <div className="text-[10px] text-secondary tracking-widest font-bold uppercase">// COMM LINK: UNSTABLE</div>
+                
+                {/* Visual Character Performance during Voice Recovery */}
+                <div className="w-20 h-20 rounded border border-primary/20 overflow-hidden bg-[#0a0a0f]/80 relative shadow-inner mb-2 animate-[flicker_0.15s_infinite]">
+                  <CharacterPortrait 
+                    speaker="aurelia" 
+                    expression="glitch" 
+                    isTyping={true} 
+                  />
+                </div>
+
                 <div className="text-xs text-primary leading-relaxed h-12 flex items-center justify-center font-mono">
                   {bootTextIndex === 0 && (
                     <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
@@ -1395,15 +1405,25 @@ const Dashboard = () => {
             )}
 
             {bootPhase === 'system_failure' && (
-              <div className="space-y-6 font-mono">
+              <div className="space-y-6 font-mono flex flex-col items-center">
                 <motion.h2 
                   animate={{ scale: [1, 1.05, 0.95, 1.02, 1], skewX: [0, 8, -8, 4, 0] }}
                   transition={{ duration: 0.4, repeat: Infinity, repeatDelay: 0.8 }}
-                  className="text-3xl font-bold text-error tracking-widest text-shadow-neon uppercase font-mono"
+                  className="text-3xl font-bold text-error tracking-widest text-shadow-neon uppercase font-mono animate-[glitch-shake_0.6s_infinite]"
                 >
                   SYSTEM FAILURE
                 </motion.h2>
                 <div className="h-[1px] bg-error/30 w-44 mx-auto" />
+                
+                {/* Glitched Character Portrait Frame */}
+                <div className="w-20 h-20 rounded border border-error/30 overflow-hidden bg-[#0a0a0f]/80 relative shadow-inner mb-2 animate-[glitch-shake_0.6s_infinite]">
+                  <CharacterPortrait 
+                    speaker="aurelia" 
+                    expression="glitch" 
+                    isTyping={false} 
+                  />
+                </div>
+
                 <div className="text-xs text-textMain leading-relaxed font-mono">
                   AURELIA: "...please... don't leave me alone..."
                 </div>
@@ -1963,11 +1983,31 @@ const Dashboard = () => {
                 <div className="border-t border-primary/20 my-1 pt-1.5 px-2 text-textMuted uppercase text-[8px] font-bold">
                   System Utilities
                 </div>
-                <button
+                 <button
                   onClick={() => { playUiClick(); resetLayout(); setShowStartMenu(false); }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-error/10 hover:text-error transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-[#1a1a24] transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
                 >
                   <span>🔄</span> Reset Windows
+                </button>
+                <button
+                  onClick={() => {
+                    playUiClick();
+                    setShowStartMenu(false);
+                    if (user?.id) {
+                      localStorage.removeItem(`${user.id}_boot_played`);
+                      localStorage.removeItem(`${user.id}_intro_played`);
+                    }
+                    Object.keys(windows).forEach(id => {
+                      if (id !== 'terminal') closeWindow(id);
+                    });
+                    openWindow('terminal');
+                    setBootPhase('power_loss');
+                    setIsAudioReady(false);
+                    setBootTextIndex(0);
+                  }}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-error/10 hover:text-error transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer animate-pulse"
+                >
+                  <span>⚡</span> Reboot System
                 </button>
               </div>
             )}
