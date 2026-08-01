@@ -9,12 +9,14 @@ import { useAudioStore } from '../../store/audioStore';
 interface TerminalProps {
   activeLesson: Lesson | null;
   onSuccess?: (flag: string) => void;
+  onCommand?: (cmd: string) => void;
+  onFailure?: () => void;
   completed?: boolean;
   width?: number;
   height?: number;
 }
 
-const Terminal: React.FC<TerminalProps> = ({ activeLesson, width, height }) => {
+const Terminal: React.FC<TerminalProps> = ({ activeLesson, onSuccess, onCommand, onFailure, width, height }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -222,7 +224,12 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, width, height }) => {
 
   const handleCommand = async (cmdStr: string, term: XTerm) => {
     const lesson = activeLessonRef.current;
-    if (!lesson) {
+    const cmdClean = cmdStr.toLowerCase().trim();
+    
+    // Check if we are executing a boot scan or local status check during reboot phase
+    const isBootCmd = !lesson && (cmdClean === 'nmap 127.0.0.1' || cmdClean === 'veil_status' || cmdClean === 'help');
+
+    if (!lesson && !isBootCmd) {
       term.writeln('[-] No active hacking lab selected to execute commands.');
       term.write(getPromptString());
       return;
@@ -232,7 +239,46 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, width, height }) => {
     historyRef.current.push(cmdStr);
     historyIndexRef.current = -1;
 
+    // Trigger external command hook if provided
+    if (onCommand) onCommand(cmdStr);
+
     const cmdLower = cmdStr.toLowerCase().trim();
+
+    // Local loopback UI scanning simulation for the reboot phase
+    if (cmdLower === 'nmap 127.0.0.1' && !lesson) {
+      playUiClick();
+      term.writeln('\r\nStarting Nmap 7.92 ( https://nmap.org ) at 2026-07-31 10:55 UTC');
+      term.writeln('Scanning localhost (127.0.0.1)...');
+      term.writeln('Host is up (0.0001s latency).');
+      term.writeln('PORT     STATE SERVICE');
+      
+      const ports = [
+        { port: '80/tcp', service: 'http-curriculum', win: 'curriculum' },
+        { port: '443/tcp', service: 'https-ai-daemon', win: 'ai_assistant' },
+        { port: '8080/tcp', service: 'http-conspiracy-board', win: 'conspiracy' },
+        { port: '9000/tcp', service: 'http-grid-map', win: 'world_map' },
+      ];
+      
+      ports.forEach((p, idx) => {
+        setTimeout(() => {
+          term.writeln(`${p.port.padEnd(9)} open  ${p.service}`);
+          if (onCommand) {
+            onCommand(`discover_${p.win}`);
+          }
+        }, (idx + 1) * 800);
+      });
+      
+      setTimeout(() => {
+        term.writeln('\r\n\x1b[1;32m[+] Visual interface endpoints discovered successfully.\x1b[0m');
+        term.writeln('\x1b[1;36m[AURELIA] "Connecting UI modules... System fully restored."\x1b[0m\r\n');
+        term.write(getPromptString().trimStart());
+        if (onCommand) {
+          onCommand('boot_completed');
+        }
+      }, (ports.length + 1) * 800);
+      
+      return;
+    }
 
     // 1. Local Tactical OS Command Interceptors
     if (cmdLower === 'veil_status') {
@@ -281,12 +327,24 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, width, height }) => {
       return;
     }
 
-    // 2. Server-side Simulated Sandbox Command Execution
+    if (!lesson) return;
     try {
       const res = await executeTerminalCommand(lesson.id, cmdStr, token || '');
       
       if (res.output) {
         term.write(res.output);
+
+        // Implicit Shell Flag Interceptor
+        const flagRegex = /flag\{[A-Za-z0-9_\-+#@$!%*?&|:;]+\}/g;
+        const matches = res.output.match(flagRegex);
+        if (matches && matches.length > 0 && onSuccess) {
+          const discoveredFlag = matches[0];
+          setTimeout(() => {
+            term.writeln('\r\n\x1b[1;32m[+] INTERCEPTED SECURITY FLAG: ' + discoveredFlag + '\x1b[0m');
+            term.writeln('\x1b[1;36m[AURELIA] "Sector decrypted. Submitting flag verification key..."\x1b[0m\r\n');
+            onSuccess(discoveredFlag);
+          }, 600);
+        }
       }
 
       currentDirRef.current = res.currentDir;
@@ -298,6 +356,9 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, width, height }) => {
       console.error('Command execution failed:', error);
       playFailureSweep();
       term.writeln('\r\n[-] Error: Command execution failed. Connection to cyber range node lost.');
+      if (onFailure) {
+        onFailure();
+      }
     }
 
     term.write(getPromptString());

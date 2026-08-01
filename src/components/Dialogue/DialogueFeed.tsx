@@ -126,14 +126,28 @@ export const DialogueFeed = () => {
   };
 
   return (
-    <div className="fixed bottom-16 left-1/2 transform -translate-x-1/2 w-[90%] max-w-2xl bg-[#07070a]/95 border border-primary/40 rounded-lg p-4 font-mono shadow-[0_0_25px_rgba(0,240,255,0.2)] z-50 flex gap-4 items-stretch CRT-glow">
-      {/* Left Column: Animated Holographic Portrait */}
-      <div className="w-24 h-24 shrink-0 rounded border border-primary/20 overflow-hidden bg-[#0a0a0f]/80 relative shadow-inner">
-        <CharacterPortrait 
-          speaker={currentNode.speaker} 
-          expression={currentNode.expression || 'neutral'} 
-          isTyping={displayedText.length < currentNode.text.length} 
-        />
+    <div className="fixed bottom-16 left-1/2 transform -translate-x-1/2 w-[90%] max-w-2xl bg-[#07070a]/95 border border-primary/40 rounded-lg p-4 font-mono shadow-[0_0_25px_rgba(0,240,255,0.2)] z-50 flex gap-4 items-center CRT-glow">
+      {/* Stage Area: Multi-Character Co-presence */}
+      <div className="flex gap-2 shrink-0 items-center justify-center select-none">
+        {/* Main Speaker Portrait */}
+        <div className="w-20 h-20 rounded border border-primary/25 overflow-hidden bg-[#0a0a0f]/90 relative shadow-inner transition-all duration-300 scale-105 shadow-[0_0_15px_rgba(0,240,255,0.15)] z-10">
+          <CharacterPortrait 
+            speaker={currentNode.speaker} 
+            expression={currentNode.expression || 'neutral'} 
+            isTyping={displayedText.length < currentNode.text.length} 
+          />
+        </div>
+        
+        {/* Co-Speaker Portrait */}
+        {currentNode.coSpeaker && (
+          <div className="w-16 h-16 rounded border border-primary/10 overflow-hidden bg-[#0a0a0f]/60 relative shadow-inner opacity-45 blur-[0.8px] transition-all duration-300 scale-95 z-0">
+            <CharacterPortrait 
+              speaker={currentNode.coSpeaker} 
+              expression={currentNode.coSpeakerExpression || 'neutral'} 
+              isTyping={false} 
+            />
+          </div>
+        )}
       </div>
 
       {/* Right Column: Dialogue Info & Text */}

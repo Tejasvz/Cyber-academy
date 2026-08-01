@@ -20,12 +20,35 @@ interface AudioStore {
   setFilterFrequency: (freq: number, rampDuration?: number) => void;
   setVolume: (vol: number) => void;
   toggleMute: () => void;
+  playStaticNoise: (vol?: number) => void;
+  stopStaticNoise: () => void;
+  playBreathing: () => void;
+  stopBreathing: () => void;
+  threatLevel: 'exploration' | 'tension' | 'combat';
+  setThreatLevel: (level: 'exploration' | 'tension' | 'combat') => void;
 }
 
-// Keep references to osc nodes for disposal
 let ambientOsc1: OscillatorNode | null = null;
 let ambientOsc2: OscillatorNode | null = null;
 let lfoNode: OscillatorNode | null = null;
+
+// Keep references to noise and breathing nodes
+let noiseSource: AudioBufferSourceNode | null = null;
+let noiseGainNode: GainNode | null = null;
+let breathSource: AudioBufferSourceNode | null = null;
+let breathGainNode: GainNode | null = null;
+let breathInterval: any = null;
+
+function createNoiseBuffer(ctx: AudioContext): AudioBuffer {
+  const bufferSize = ctx.sampleRate * 2; // 2 seconds
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+  return buffer;
+}
+
 
 export const useAudioStore = create<AudioStore>((set, get) => ({
   isInitialized: false,
@@ -36,6 +59,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
   masterGain: null,
   ambientGain: null,
   filterNode: null,
+  threatLevel: 'exploration',
 
   initializeAudio: () => {
     if (get().isInitialized) return;
@@ -57,7 +81,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       filterNode.connect(masterGain);
 
       const ambientGain = ctx.createGain();
-      ambientGain.gain.value = 0.02; // Keep background hum truly subtle
+      ambientGain.gain.value = 0.0; // Keep background hum truly subtle
       ambientGain.connect(filterNode);
 
       // 2. Synthesize Procedural Ambient Reactor Hum (Aether Core background)
@@ -230,5 +254,219 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       masterGain.gain.value = nextMuted ? 0 : volume;
     }
   },
+
+  playStaticNoise: (vol = 0.05) => {
+    const ctx = get().audioCtx;
+    const master = get().masterGain;
+    if (!ctx || !master) return;
+    
+    if (noiseSource) {
+      try { noiseSource.stop(); } catch (e) {}
+    }
+    
+    const buffer = createNoiseBuffer(ctx);
+    noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = buffer;
+    noiseSource.loop = true;
+    
+    noiseGainNode = ctx.createGain();
+    noiseGainNode.gain.setValueAtTime(vol, ctx.currentTime);
+    
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 1000;
+    
+    noiseSource.connect(lowpass);
+    lowpass.connect(noiseGainNode);
+    noiseGainNode.connect(master);
+    
+    noiseSource.start();
+  },
+  
+  stopStaticNoise: () => {
+    if (noiseSource) {
+      try { noiseSource.stop(); } catch (e) {}
+      noiseSource = null;
+    }
+  },
+  
+  playBreathing: () => {
+    const ctx = get().audioCtx;
+    const master = get().masterGain;
+    if (!ctx || !master) return;
+    
+    if (breathSource) return;
+    
+    const buffer = createNoiseBuffer(ctx);
+    breathSource = ctx.createBufferSource();
+    breathSource.buffer = buffer;
+    breathSource.loop = true;
+    
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 250;
+    filter.Q.value = 1.5;
+    
+    breathGainNode = ctx.createGain();
+    breathGainNode.gain.value = 0.0;
+    
+    breathSource.connect(filter);
+    filter.connect(breathGainNode);
+    breathGainNode.connect(master);
+    breathSource.start();
+    
+    const runCycle = () => {
+      if (!breathGainNode || !filter) return;
+      const now = ctx.currentTime;
+      
+      breathGainNode.gain.cancelScheduledValues(now);
+      breathGainNode.gain.linearRampToValueAtTime(0.04, now + 1.8);
+      filter.frequency.cancelScheduledValues(now);
+      filter.frequency.exponentialRampToValueAtTime(450, now + 1.8);
+      
+      breathGainNode.gain.setValueAtTime(0.04, now + 2.0);
+      breathGainNode.gain.linearRampToValueAtTime(0.0, now + 4.0);
+      filter.frequency.setValueAtTime(450, now + 2.0);
+      filter.frequency.exponentialRampToValueAtTime(200, now + 4.0);
+    };
+    
+    runCycle();
+    breathInterval = setInterval(runCycle, 4000);
+  },
+  
+  stopBreathing: () => {
+    if (breathSource) {
+      try { breathSource.stop(); } catch (e) {}
+      breathSource = null;
+    }
+    if (breathInterval) {
+      clearInterval(breathInterval);
+      breathInterval = null;
+    }
+  },
+
+  setThreatLevel: (level) => {
+    const oldLevel = get().threatLevel;
+    if (oldLevel === level) return;
+    
+    set({ threatLevel: level });
+    
+    const { audioCtx, ambientGain } = get();
+    if (!audioCtx) return;
+    
+    const now = audioCtx.currentTime;
+    
+    if (level === 'exploration') {
+      if (ambientGain) {
+        ambientGain.gain.cancelScheduledValues(now);
+        ambientGain.gain.linearRampToValueAtTime(0.01, now + 3);
+      }
+      stopTensionPulses();
+      stopCombatSiren();
+    } else if (level === 'tension') {
+      if (ambientGain) {
+        ambientGain.gain.cancelScheduledValues(now);
+        ambientGain.gain.linearRampToValueAtTime(0.04, now + 2);
+      }
+      startTensionPulses(audioCtx, 1600);
+      stopCombatSiren();
+    } else if (level === 'combat') {
+      if (ambientGain) {
+        ambientGain.gain.cancelScheduledValues(now);
+        ambientGain.gain.linearRampToValueAtTime(0.07, now + 1);
+      }
+      startTensionPulses(audioCtx, 800);
+      startCombatSiren(audioCtx);
+    }
+  },
 }));
+
+let tensionInterval: any = null;
+let sirenOsc: OscillatorNode | null = null;
+let sirenLfo: OscillatorNode | null = null;
+let sirenGainNode: GainNode | null = null;
+
+function startTensionPulses(ctx: AudioContext, intervalMs: number) {
+  stopTensionPulses();
+  
+  const triggerPulse = () => {
+    try {
+      const { filterNode, isMuted, volume } = useAudioStore.getState();
+      if (!filterNode || isMuted) return;
+      
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(65, now);
+      osc.frequency.exponentialRampToValueAtTime(32, now + 0.7);
+      
+      gain.gain.setValueAtTime(0.12 * volume, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+      
+      osc.connect(gain);
+      gain.connect(filterNode);
+      
+      osc.start(now);
+      osc.stop(now + 0.8);
+    } catch (e) {}
+  };
+  
+  triggerPulse();
+  tensionInterval = setInterval(triggerPulse, intervalMs);
+}
+
+function stopTensionPulses() {
+  if (tensionInterval) {
+    clearInterval(tensionInterval);
+    tensionInterval = null;
+  }
+}
+
+function startCombatSiren(ctx: AudioContext) {
+  stopCombatSiren();
+  
+  try {
+    const { filterNode, isMuted, volume } = useAudioStore.getState();
+    if (!filterNode || isMuted) return;
+    
+    const now = ctx.currentTime;
+    sirenOsc = ctx.createOscillator();
+    sirenLfo = ctx.createOscillator();
+    
+    const lfoGain = ctx.createGain();
+    sirenGainNode = ctx.createGain();
+    
+    sirenOsc.type = 'triangle';
+    sirenOsc.frequency.setValueAtTime(450, now);
+    
+    sirenLfo.type = 'sine';
+    sirenLfo.frequency.setValueAtTime(0.6, now);
+    lfoGain.gain.setValueAtTime(100, now);
+    
+    sirenGainNode.gain.setValueAtTime(0.015 * volume, now);
+    
+    sirenLfo.connect(lfoGain);
+    lfoGain.connect(sirenOsc.frequency);
+    
+    sirenOsc.connect(sirenGainNode);
+    sirenGainNode.connect(filterNode);
+    
+    sirenOsc.start(now);
+    sirenLfo.start(now);
+  } catch (e) {}
+}
+
+function stopCombatSiren() {
+  if (sirenOsc) {
+    try { sirenOsc.stop(); } catch (e) {}
+    sirenOsc = null;
+  }
+  if (sirenLfo) {
+    try { sirenLfo.stop(); } catch (e) {}
+    sirenLfo = null;
+  }
+  sirenGainNode = null;
+}
 export default useAudioStore;
