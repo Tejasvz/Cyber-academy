@@ -111,3 +111,37 @@ export const getProgress = async (req: AuthRequest, res: Response): Promise<void
     res.status(500).json({ error: 'Server error fetching progress' });
   }
 };
+
+export const resetProgress = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    // Delete progress entries for this user
+    await prisma.progress.deleteMany({
+      where: { userId }
+    });
+
+    // Reset XP and level back to defaults
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { xp: 0, level: 1 }
+    });
+
+    res.json({
+      message: 'Operator lattice reset completed.',
+      user: {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        xp: updatedUser.xp,
+        level: updatedUser.level
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error resetting operator session' });
+  }
+};
