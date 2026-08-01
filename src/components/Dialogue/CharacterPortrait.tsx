@@ -67,6 +67,11 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
   // Periodic Blink Timer
   useEffect(() => {
     const triggerBlink = () => {
+      if (expression === 'panic') {
+        // Suspend natural blinks during wide-eyed panic states
+        blinkTimeout = setTimeout(triggerBlink, 3000);
+        return;
+      }
       setBlink(true);
       setTimeout(() => setBlink(false), 140);
       const nextDelay = 3000 + Math.random() * 4000;
@@ -75,7 +80,7 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
 
     let blinkTimeout = setTimeout(triggerBlink, 4000);
     return () => clearTimeout(blinkTimeout);
-  }, []);
+  }, [expression]);
 
   // Micro-glitch distortions
   useEffect(() => {
@@ -177,11 +182,45 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
   // Helper to compile a coordinate with custom mouse parallax translation offsets
   const getC = (nodeName: keyof typeof nodes): string => {
     const [x, y, factor] = nodes[nodeName];
-    // Kaelen has perturbed nodes mapping to represent glitch architecture
-    const glitchOffset = (isGlitched && speaker === 'kaelen') ? (Math.random() - 0.5) * 4 : 0;
     
-    const finalX = x + mouseOffset.x * factor + glitchOffset;
-    const finalY = y + mouseOffset.y * factor + (isTalking ? Math.sin(Date.now() * 0.12) * (factor * 0.7) : 0);
+    // Morph coordinate offsets based on dynamic emotion expressions
+    let morphX = 0;
+    let morphY = 0;
+
+    if (expression === 'smile') {
+      if (nodeName === 'mouthL' || nodeName === 'mouthR') {
+        morphY = -2.5; // pull corners up
+      }
+    } else if (expression === 'angry') {
+      if (nodeName === 'eyebrowL' || nodeName === 'eyebrowR') {
+        morphY = 2.0; // furrow eyebrows down
+      }
+      if (nodeName === 'foreheadCenter') {
+        morphY = 1.5;
+      }
+    } else if (expression === 'worried' || expression === 'sad' || expression === 'glitch') {
+      if (nodeName === 'eyebrowL' || nodeName === 'eyebrowR') {
+        morphY = -1.8; // tilt eyebrows up at center
+      }
+      if (nodeName === 'mouthL' || nodeName === 'mouthR') {
+        morphY = 2.0; // droop mouth edges
+      }
+    } else if (expression === 'panic') {
+      if (nodeName === 'chinTip' || nodeName === 'chinUpper' || nodeName === 'jawL' || nodeName === 'jawR') {
+        morphY = 3.5; // drop lower jaw
+      }
+      if (nodeName === 'mouthCenter') {
+        morphY = 2.0; // drop center lip
+      }
+    }
+
+    // Heavy random perturbation under glitched states
+    const isGlitchedState = expression === 'glitch' || glitchTrigger;
+    const glitchX = isGlitchedState ? (Math.random() - 0.5) * (factor * 9) : 0;
+    const glitchY = isGlitchedState ? (Math.random() - 0.5) * (factor * 9) : 0;
+    
+    const finalX = x + mouseOffset.x * factor + morphX + glitchX;
+    const finalY = y + mouseOffset.y * factor + morphY + (isTalking ? Math.sin(Date.now() * 0.12) * (factor * 0.7) : 0) + glitchY;
     return `${finalX},${finalY}`;
   };
 

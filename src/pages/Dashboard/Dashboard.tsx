@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import Terminal from '../../components/Terminal/Terminal';
 import { fetchCurriculum, type Curriculum, type Lesson } from '../../services/curriculumService';
-import { completeLesson, fetchProgress } from '../../services/progressService';
+import { completeLesson, fetchProgress, resetProgress } from '../../services/progressService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWindowStore } from '../../store/windowStore';
 import { DialogueFeed } from '../../components/Dialogue/DialogueFeed';
@@ -248,19 +248,9 @@ const Dashboard = () => {
     isMuted,
   } = useAudioStore();
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [bootPhase, setBootPhase] = useState<'power_loss' | 'voice_crack' | 'system_failure' | 'console_restore' | 'terminal_only' | 'nmap_scan' | 'completed'>(() => {
-    try {
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        const u = JSON.parse(savedUser);
-        const bootPlayed = localStorage.getItem(`${u.id}_boot_played`);
-        if (bootPlayed === 'true') {
-          return 'completed';
-        }
-      }
-    } catch (e) {}
-    return 'power_loss';
-  });
+  const [bootPhase, setBootPhase] = useState<'main_menu' | 'power_loss' | 'voice_crack' | 'system_failure' | 'console_restore' | 'terminal_only' | 'nmap_scan' | 'restoring' | 'completed'>('main_menu');
+  const [activeMenuPanel, setActiveMenuPanel] = useState<'none' | 'profile' | 'settings' | 'credits'>('none');
+  const [restoreStep, setRestoreStep] = useState(0);
   const [bootTextIndex, setBootTextIndex] = useState(0);
   const [bootstrapInput, setBootstrapInput] = useState('');
   const [bootstrapError, setBootstrapError] = useState('');
@@ -450,7 +440,7 @@ const Dashboard = () => {
 
   // Narrative Boot Sequence Loop
   useEffect(() => {
-    if (bootPhase === 'completed') return;
+    if (bootPhase === 'completed' || bootPhase === 'main_menu' || bootPhase === 'restoring') return;
 
     if (bootPhase === 'power_loss' && isAudioReady) {
       const timer = setTimeout(() => {
@@ -499,6 +489,69 @@ const Dashboard = () => {
       setThreatLevel('tension');
     }
   }, [activeLesson, bootPhase]);
+
+  // Automated transition effect during system stabilization ('restoring' phase)
+  useEffect(() => {
+    if (bootPhase === 'restoring') {
+      const interval = setInterval(() => {
+        setRestoreStep(prev => {
+          if (prev >= 4) {
+            clearInterval(interval);
+            const { initializeAudio: playAudioHum, stopStaticNoise } = useAudioStore.getState();
+            try { playAudioHum(); stopStaticNoise(); } catch(e){}
+            
+            setBootPhase('completed');
+            if (user) {
+              localStorage.setItem(`${user.id}_boot_played`, 'true');
+            }
+            
+            // Trigger Aurelia's initial command briefing conversation sequence
+            startDialogueSequence([
+              {
+                id: 'brief-1',
+                speaker: 'aurelia',
+                text: "AURELIA: 'Consensus lattice stabilized. Command grid interface online. Welcome to Project Veil, Operator.'",
+                expression: 'smile',
+                typingSpeed: 25
+              },
+              {
+                id: 'brief-2',
+                speaker: 'aurelia',
+                text: "AURELIA: 'Commander Hesper is monitoring terminal feeds from Aether HQ, and Syndicate signals are buzzing. I've indexed Operation Black Echo [B01] in Mission Control. Initiate bypass parameters to begin.'",
+                expression: 'talking',
+                typingSpeed: 25
+              }
+            ]);
+            return 4;
+          }
+          return prev + 1;
+        });
+      }, 1100);
+      return () => clearInterval(interval);
+    }
+  }, [bootPhase, user, startDialogueSequence]);
+
+  const handleNewOperator = async () => {
+    if (!window.confirm("WARNING: Creating a new operator will wipe all achievements, XP, and secure connection hashes. Confirm neural wipe?")) return;
+    try {
+      const data = await resetProgress(token || '');
+      // Sync local auth user context
+      if (data && data.user) {
+        login(data.user, token || '');
+      }
+      // Wipe local storage flags
+      if (user) {
+        localStorage.removeItem(`${user.id}_boot_played`);
+      }
+      // Trigger reboot crash
+      setIsAudioReady(false);
+      setBootPhase('power_loss');
+      setBootTextIndex(0);
+      setActiveLesson(null);
+    } catch (err) {
+      console.error("Failed to wipe progression database:", err);
+    }
+  };
 
   // Capture global operator activities to reset the idle clock
   useEffect(() => {
@@ -879,8 +932,14 @@ const Dashboard = () => {
   const renderBootOverlay = () => {
     if (bootPhase === 'completed' || bootPhase === 'terminal_only' || bootPhase === 'nmap_scan') return null;
 
+    const savedUser = localStorage.getItem('user');
+    let hasPlayed = false;
+    if (savedUser && user) {
+      hasPlayed = localStorage.getItem(`${user.id}_boot_played`) === 'true';
+    }
+
     return (
-      <div className="fixed inset-0 z-50 bg-[#07070a] flex flex-col items-center justify-center p-4 font-mono select-none overflow-hidden scanlines">
+      <div className="fixed inset-0 z-50 bg-[#06060a] flex flex-col items-center justify-center p-4 font-mono select-none overflow-hidden scanlines">
         {/* CRT glass reflection and scan lines */}
         <div 
           className="absolute inset-0 pointer-events-none z-10 opacity-30 mix-blend-overlay"
@@ -890,8 +949,232 @@ const Dashboard = () => {
           }}
         />
 
-        {/* Phase: Power Loss (Click to start) */}
-        {!isAudioReady && (
+        {/* Phase: Main Menu */}
+        {bootPhase === 'main_menu' && (
+          <div 
+            className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-12 gap-8 items-center z-20 relative p-6"
+            style={{
+              backgroundImage: 'radial-gradient(circle, rgba(0, 240, 255, 0.03) 1px, transparent 1px)',
+              backgroundSize: '32px 32px'
+            }}
+          >
+            {/* Spinning vector HUD background */}
+            <div className="absolute -inset-10 z-0 pointer-events-none opacity-10 flex items-center justify-center animate-[spin_120s_linear_infinite]">
+              <svg className="w-[100vw] h-[100vw] text-primary" viewBox="0 0 500 500" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3, 9">
+                <circle cx="250" cy="250" r="220" />
+                <circle cx="250" cy="250" r="160" />
+                <circle cx="250" cy="250" r="100" />
+                <line x1="250" y1="0" x2="250" y2="500" />
+                <line x1="0" y1="250" x2="500" y2="250" />
+              </svg>
+            </div>
+
+            {/* Left Options Container */}
+            <div className="md:col-span-5 space-y-8 flex flex-col justify-center relative z-10">
+              <div className="space-y-2 border-l-2 border-primary pl-4">
+                <h1 className="text-3xl font-bold tracking-widest text-shadow-neon text-primary uppercase">
+                  PROJECT VEIL
+                </h1>
+                <p className="text-[9px] text-textMuted uppercase tracking-wider">
+                  Secure Cognitive Command Grid // v8.12.92
+                </p>
+              </div>
+
+              <nav className="flex flex-col gap-3">
+                <button
+                  disabled={!hasPlayed}
+                  onClick={() => {
+                    playUiClick();
+                    // Play stabilizing hum
+                    try {
+                      initializeAudio();
+                    } catch(e){}
+                    setBootPhase('completed');
+                  }}
+                  className={`text-left px-4 py-3 border font-bold text-xs uppercase tracking-widest transition-all rounded font-mono ${
+                    hasPlayed 
+                      ? 'border-primary/40 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer hover:shadow-neon' 
+                      : 'border-white/5 text-textMuted cursor-not-allowed bg-white/2'
+                  }`}
+                >
+                  {hasPlayed ? '[ CONTINUE ACTIVE INFILTRATION ]' : '[ CONTINUE (NO STABILIZED INDEX) ]'}
+                </button>
+
+                <button
+                  onClick={() => { playUiClick(); handleNewOperator(); }}
+                  className="text-left px-4 py-3 border border-secondary/40 text-secondary hover:bg-secondary/10 hover:border-secondary transition-all rounded font-bold text-xs uppercase tracking-widest cursor-pointer font-mono hover:shadow-neon"
+                >
+                  [ NEW OPERATOR CONTEXT ]
+                </button>
+
+                <button
+                  onClick={() => {
+                    playUiClick();
+                    setActiveMenuPanel(activeMenuPanel === 'profile' ? 'none' : 'profile');
+                  }}
+                  className={`text-left px-4 py-3 border border-primary/20 text-textMain hover:bg-primary/5 hover:border-primary/45 transition-all rounded text-xs uppercase tracking-widest cursor-pointer font-mono ${
+                    activeMenuPanel === 'profile' ? 'border-primary bg-primary/10' : ''
+                  }`}
+                >
+                  [ LOAD PROFILE ]
+                </button>
+
+                <button
+                  onClick={() => {
+                    playUiClick();
+                    setActiveMenuPanel(activeMenuPanel === 'settings' ? 'none' : 'settings');
+                  }}
+                  className={`text-left px-4 py-3 border border-primary/20 text-textMain hover:bg-primary/5 hover:border-primary/45 transition-all rounded text-xs uppercase tracking-widest cursor-pointer font-mono ${
+                    activeMenuPanel === 'settings' ? 'border-primary bg-primary/10' : ''
+                  }`}
+                >
+                  [ CONFIGURE ACCESS ]
+                </button>
+
+                <button
+                  onClick={() => {
+                    playUiClick();
+                    setActiveMenuPanel(activeMenuPanel === 'credits' ? 'none' : 'credits');
+                  }}
+                  className={`text-left px-4 py-3 border border-primary/20 text-textMain hover:bg-primary/5 hover:border-primary/45 transition-all rounded text-xs uppercase tracking-widest cursor-pointer font-mono ${
+                    activeMenuPanel === 'credits' ? 'border-primary bg-primary/10' : ''
+                  }`}
+                >
+                  [ SYSTEM DIRECTORS ]
+                </button>
+
+                <button
+                  onClick={() => { playUiClick(); _logout(); }}
+                  className="text-left px-4 py-3 border border-error/20 text-error/80 hover:bg-error/10 hover:border-error transition-all rounded text-xs uppercase tracking-widest cursor-pointer font-mono"
+                >
+                  [ DOCK OUT (LOGOUT) ]
+                </button>
+              </nav>
+            </div>
+
+            {/* Right Display Area */}
+            <div className="md:col-span-7 h-[420px] flex items-center justify-center bg-[#07070d]/50 border border-primary/10 rounded-lg p-6 relative overflow-hidden backdrop-blur-sm z-10">
+              {activeMenuPanel === 'none' && (
+                <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
+                  <div className="w-64 h-64 opacity-85 relative flex items-center justify-center animate-[pulse_6s_ease-in-out_infinite]">
+                    <CharacterPortrait 
+                      speaker="aurelia" 
+                      expression="neutral" 
+                      isTyping={false} 
+                    />
+                  </div>
+                  <div className="text-[8px] text-textMuted uppercase tracking-[0.3em] text-center animate-pulse">
+                    [ LINK STABILIZER CONNECTED // 127.0.0.1 ]
+                  </div>
+                </div>
+              )}
+
+              {activeMenuPanel === 'profile' && (
+                <div className="w-full h-full flex flex-col justify-between font-mono text-[11px] leading-relaxed text-textMain space-y-4">
+                  <div className="border-b border-primary/20 pb-2 flex justify-between items-center">
+                    <span className="font-bold text-primary">// OPERATOR PROFILE CREDENTIALS</span>
+                    <span className="text-[9px] text-textMuted">CLASS_B_SECURE</span>
+                  </div>
+                  
+                  <div className="space-y-3 flex-grow pt-2">
+                    <div className="grid grid-cols-3 border-b border-white/5 py-1">
+                      <span className="text-textMuted uppercase font-bold">OPERATOR ALIAS:</span>
+                      <span className="col-span-2 text-primary font-bold">{user?.username}</span>
+                    </div>
+                    <div className="grid grid-cols-3 border-b border-white/5 py-1">
+                      <span className="text-textMuted uppercase font-bold">CLEARANCE:</span>
+                      <span className="col-span-2 text-secondary font-bold">LEVEL_{user?.level || 1}</span>
+                    </div>
+                    <div className="grid grid-cols-3 border-b border-white/5 py-1">
+                      <span className="text-textMuted uppercase font-bold">ACCUMULATED XP:</span>
+                      <span className="col-span-2 text-primary font-bold">{user?.xp} XP</span>
+                    </div>
+                    <div className="grid grid-cols-3 border-b border-white/5 py-1">
+                      <span className="text-textMuted uppercase font-bold">INTEGRITY HASH:</span>
+                      <span className="col-span-2 text-shadow-neon text-primary overflow-hidden text-ellipsis whitespace-nowrap">0x7f4ea92b0c11d9f8e285aa{user?.id?.substring(0,6)}</span>
+                    </div>
+                    <div className="grid grid-cols-3 border-b border-white/5 py-1">
+                      <span className="text-textMuted uppercase font-bold">SYSTEM STAT:</span>
+                      <span className="col-span-2 text-primary">SECURED LATTICE LINK</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-primary/5 p-3 border border-primary/20 rounded text-[9.5px] leading-normal uppercase">
+                    Aurelia notes: "Your telemetry history matches standard field directives, Fragment. Keep correlating vectors to ascend node protocols."
+                  </div>
+                </div>
+              )}
+
+              {activeMenuPanel === 'settings' && (
+                <div className="w-full h-full flex flex-col justify-between font-mono text-[11px] leading-relaxed text-textMain space-y-4">
+                  <div className="border-b border-primary/20 pb-2">
+                    <span className="font-bold text-primary">// CONFIGURE OS ACCESS VARIABLES</span>
+                  </div>
+                  
+                  <div className="space-y-4 flex-grow pt-2">
+                    <div className="space-y-2">
+                      <label className="text-textMuted uppercase font-bold block text-[10px]">1. Audio Soundscape Transmission</label>
+                      <button
+                        onClick={() => { playUiClick(); toggleMute(); }}
+                        className={`w-full border py-2 rounded text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
+                          isMuted 
+                            ? 'border-error/40 text-error bg-error/5' 
+                            : 'border-primary/30 text-primary bg-primary/5'
+                        }`}
+                      >
+                        {isMuted ? '🔊 CURRENTLY MUTED (CLICK TO UNMUTE)' : '🔊 SOUND IS ACTIVE (CLICK TO MUTE)'}
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 pt-2">
+                      <label className="text-textMuted uppercase font-bold block text-[10px]">2. Coherence Accent Theme</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="border border-primary text-primary bg-primary/10 text-center py-2.5 rounded text-[9px] uppercase font-bold cursor-pointer hover:bg-primary/20">Cyan</div>
+                        <div className="border border-white/10 text-textMuted text-center py-2.5 rounded text-[9px] uppercase font-bold cursor-not-allowed bg-white/2">Amber</div>
+                        <div className="border border-white/10 text-textMuted text-center py-2.5 rounded text-[9px] uppercase font-bold cursor-not-allowed bg-white/2">Green</div>
+                        <div className="border border-white/10 text-textMuted text-center py-2.5 rounded text-[9px] uppercase font-bold cursor-not-allowed bg-white/2">Red</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-primary/5 p-3 border border-primary/20 rounded text-[9px] uppercase leading-normal">
+                    OS parameters initialized from config database. High frequency filtering is active.
+                  </div>
+                </div>
+              )}
+
+              {activeMenuPanel === 'credits' && (
+                <div className="w-full h-full flex flex-col justify-between font-mono text-[11px] leading-relaxed text-textMain space-y-4">
+                  <div className="border-b border-primary/20 pb-2">
+                    <span className="font-bold text-primary">// DIRECTORS & TECH ARCHITECTS</span>
+                  </div>
+                  
+                  <div className="space-y-3 flex-grow pt-2 select-none overflow-y-auto max-h-[220px] scrollbar-thin pr-2">
+                    <div className="py-1 border-b border-white/5">
+                      <div className="font-bold text-primary uppercase text-[9px]">Creative & UX Direction</div>
+                      <div className="text-[11px]">Advanced Agentic Coding (Google Deepmind)</div>
+                    </div>
+                    <div className="py-1 border-b border-white/5">
+                      <div className="font-bold text-primary uppercase text-[9px]">Narrative Architect & Writing</div>
+                      <div className="text-[11px]">Creative Writers Sector // Project Veil Guilds</div>
+                    </div>
+                    <div className="py-1 border-b border-white/5">
+                      <div className="font-bold text-primary uppercase text-[9px]">Engineering & Systems Compilation</div>
+                      <div className="text-[11px]">Lattice Daemon Core compilers</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-primary/5 p-3 border border-primary/20 rounded text-[9px] uppercase leading-normal">
+                    Thank you for entering Project Veil. Keep exploring, Fragment.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Phase: Click to calibrate link (Power Loss) */}
+        {bootPhase === 'power_loss' && !isAudioReady && (
           <div 
             onClick={() => {
               initializeAudio();
@@ -901,13 +1184,57 @@ const Dashboard = () => {
               setIsAudioReady(true);
               setBootPhase('power_loss');
             }}
-            className="cursor-pointer text-[10px] text-primary animate-pulse tracking-widest text-shadow-neon uppercase border border-primary/20 bg-primary/5 px-6 py-4 rounded-lg hover:bg-primary/20 transition-all font-bold font-mono"
+            className="cursor-pointer text-[10px] text-primary animate-pulse tracking-widest text-shadow-neon uppercase border border-primary/20 bg-primary/5 px-6 py-4 rounded-lg hover:bg-primary/20 transition-all font-bold font-mono z-20"
           >
             [ Click to Calibrate Synaptic Link ]
           </div>
         )}
 
-        {isAudioReady && (
+        {/* Phase: Automated Loading restored logs */}
+        {bootPhase === 'restoring' && (
+          <div className="space-y-6 font-mono text-left max-w-lg w-full bg-[#08080c]/95 border border-primary/30 p-8 rounded shadow-[0_0_40px_rgba(0,240,255,0.2)] z-20">
+            <div className="flex justify-between items-center border-b border-primary/20 pb-2 text-[10px] text-primary">
+              <span className="font-bold tracking-widest">// ALIGNING COGNITIVE INTERFACE</span>
+              <span className="animate-pulse text-secondary">STABILIZING GRID ACCENTS...</span>
+            </div>
+
+            {/* Center Stabilizing Hologram */}
+            <div className="h-44 w-full flex items-center justify-center">
+              <div className="w-48 h-48">
+                <CharacterPortrait 
+                  speaker="aurelia" 
+                  expression={restoreStep < 2 ? "glitch" : restoreStep < 3 ? "sad" : "neutral"} 
+                  isTyping={false} 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-[10px] text-textMuted select-none">
+              <div className={restoreStep >= 0 ? "text-primary" : ""}>
+                {restoreStep >= 0 ? "✔ INITIALIZING COGNITIVE LATTICE CHANNELS" : "☐ INITIALIZING COGNITIVE LATTICE CHANNELS..."}
+              </div>
+              <div className={restoreStep >= 1 ? "text-primary" : ""}>
+                {restoreStep >= 1 ? "✔ ALIGNING NETWORK SYNC TELEMETRY" : restoreStep === 0 ? "⏱ ALIGNING NETWORK SYNC TELEMETRY..." : "☐ ALIGNING NETWORK SYNC TELEMETRY"}
+              </div>
+              <div className={restoreStep >= 2 ? "text-primary" : ""}>
+                {restoreStep >= 2 ? "✔ CORRELATING INCIDENT LOG VECTOR SHARDS" : restoreStep === 1 ? "⏱ CORRELATING INCIDENT LOG VECTOR SHARDS..." : "☐ CORRELATING INCIDENT LOG VECTOR SHARDS"}
+              </div>
+              <div className={restoreStep >= 3 ? "text-primary" : ""}>
+                {restoreStep >= 3 ? "✔ ESTABLISHING ENCRYPTED COMPANION CHANNEL" : restoreStep === 2 ? "⏱ ESTABLISHING ENCRYPTED COMPANION CHANNEL..." : "☐ ESTABLISHING ENCRYPTED COMPANION CHANNEL"}
+              </div>
+            </div>
+
+            {/* Stabilizing bar */}
+            <div className="h-1.5 bg-primary/10 border border-primary/20 rounded relative overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-1000"
+                style={{ width: `${(restoreStep + 1) * 20}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {isAudioReady && bootPhase !== 'main_menu' && bootPhase !== 'restoring' && (
           <div className="w-full max-w-xl text-center space-y-6 select-none relative z-20">
             {bootPhase === 'power_loss' && (
               <div className="text-[10px] text-textMuted uppercase tracking-widest animate-pulse font-mono">
@@ -919,8 +1246,8 @@ const Dashboard = () => {
               <div className="space-y-4 font-mono flex flex-col items-center">
                 <div className="text-[10px] text-secondary tracking-widest font-bold uppercase">// COMM LINK: UNSTABLE</div>
                 
-                {/* Visual Character Performance during Voice Recovery */}
-                <div className="w-20 h-20 rounded border border-primary/20 overflow-hidden bg-[#0a0a0f]/80 relative shadow-inner mb-2 animate-[flicker_0.15s_infinite]">
+                {/* Centered Large-size glitched hologram of Aurelia */}
+                <div className="w-72 h-72 relative flex items-center justify-center animate-[flicker_0.15s_infinite]">
                   <CharacterPortrait 
                     speaker="aurelia" 
                     expression="glitch" 
@@ -936,7 +1263,7 @@ const Dashboard = () => {
                   )}
                   {bootTextIndex === 1 && (
                     <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-                      AURELIA: "...if anyone is alive..."
+                      AURELIA: "...please don't leave me alone..."
                     </motion.span>
                   )}
                 </div>
@@ -962,8 +1289,8 @@ const Dashboard = () => {
                 </motion.h2>
                 <div className="h-[1px] bg-error/30 w-44 mx-auto" />
                 
-                {/* Glitched Character Portrait Frame */}
-                <div className="w-20 h-20 rounded border border-error/30 overflow-hidden bg-[#0a0a0f]/80 relative shadow-inner mb-2 animate-[glitch-shake_0.6s_infinite]">
+                {/* Centered Large-size glitched hologram of Aurelia */}
+                <div className="w-72 h-72 relative flex items-center justify-center animate-[glitch-shake_0.6s_infinite]">
                   <CharacterPortrait 
                     speaker="aurelia" 
                     expression="glitch" 
@@ -995,8 +1322,8 @@ const Dashboard = () => {
                     e.preventDefault();
                     if (bootstrapInput.toLowerCase().trim() === 'bootstrap') {
                       playUiClick();
-                      setBootPhase('terminal_only');
-                      openWindow('terminal');
+                      setBootPhase('restoring');
+                      setRestoreStep(0);
                     } else {
                       playFailureSweep();
                       setBootstrapError("Command not found. Check parameters.");

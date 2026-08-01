@@ -5,12 +5,12 @@ export interface DialogueNode {
   speaker: 'aurelia' | 'hesper' | 'kaelen' | 'byte' | 'operator';
   text: string;
   voiceUrl?: string;
-  expression?: 'neutral' | 'worried' | 'angry' | 'glitch' | 'talking' | 'explaining' | 'exhausted';
+  expression?: 'neutral' | 'worried' | 'angry' | 'glitch' | 'talking' | 'explaining' | 'exhausted' | 'smile' | 'panic';
   typingSpeed?: number; // Base speed per character in milliseconds
   pauseIndices?: Record<number, number>; // Map character index to pause duration in ms (e.g., { 10: 500 } pauses for 500ms at character 10)
   interruptsPrevious?: boolean; // Clips active comms immediately
   coSpeaker?: 'aurelia' | 'hesper' | 'kaelen' | 'byte' | 'operator';
-  coSpeakerExpression?: 'neutral' | 'worried' | 'angry' | 'glitch' | 'talking' | 'explaining' | 'exhausted';
+  coSpeakerExpression?: 'neutral' | 'worried' | 'angry' | 'glitch' | 'talking' | 'explaining' | 'exhausted' | 'smile' | 'panic';
 }
 
 export interface ChatMessage {

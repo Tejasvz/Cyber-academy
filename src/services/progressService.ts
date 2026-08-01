@@ -18,3 +18,12 @@ export const fetchProgress = async (token: string): Promise<string[]> => {
   });
   return response.data;
 };
+
+export const resetProgress = async (token: string) => {
+  const response = await axios.post(`${API_BASE_URL}/api/progress/reset`, {}, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return response.data;
+};
