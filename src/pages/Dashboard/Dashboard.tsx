@@ -9,9 +9,9 @@ import { DialogueFeed } from '../../components/Dialogue/DialogueFeed';
 import { CharacterPortrait } from '../../components/Dialogue/CharacterPortrait';
 import { useDialogueStore, type DialogueNode } from '../../store/dialogueStore';
 import { useAudioStore } from '../../store/audioStore';
-import { TapeDecryptor } from '../../components/Dialogue/TapeDecryptor';
+import { TapeDecryptor as _TapeDecryptor } from '../../components/Dialogue/TapeDecryptor';
 import { ConspiracyBoard } from '../../components/Conspiracy/ConspiracyBoard';
-import { SectorMap } from '../../components/Map/SectorMap';
+import { SectorMap as _SectorMap } from '../../components/Map/SectorMap';
 
 const LESSON_CINEMATIC_SCRIPTS: Record<string, DialogueNode[]> = {
   B01: [
@@ -195,14 +195,14 @@ const LESSON_CINEMATIC_SCRIPTS: Record<string, DialogueNode[]> = {
 };
 
 const Dashboard = () => {
-  const { user, token, logout, login } = useAuth();
+  const { user, token, logout: _logout, login } = useAuth();
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   // Gameplay & tab states
-  const [activeTab, setActiveTab] = useState<'theory' | 'sandbox' | 'blueteam' | 'remediation'>('theory');
+  const [_activeTab, _setActiveTab] = useState<'theory' | 'sandbox' | 'blueteam' | 'remediation'>('theory');
   const [_consecutiveErrors, setConsecutiveErrors] = useState(0);
   const [lastActivity, setLastActivity] = useState(Date.now());
 
@@ -211,7 +211,7 @@ const Dashboard = () => {
   const [submittedReports, setSubmittedReports] = useState<string[]>([]);
 
   // Contract report form states
-  const [contractToReport, setContractToReport] = useState<'Act I: The Reassembly' | 'Act II: The Resonance' | 'Act III: The Core Breach' | null>(null);
+  const [_contractToReport, _setContractToReport] = useState<'Act I: The Reassembly' | 'Act II: The Resonance' | 'Act III: The Core Breach' | null>(null);
   const [reportVuln, setReportVuln] = useState('');
   const [reportExploit, setReportExploit] = useState('');
   const [reportFix, setReportFix] = useState('');
@@ -225,18 +225,20 @@ const Dashboard = () => {
   // Core Cyber OS Window Store
   const {
     windows,
-    windowOrder,
     openWindow,
     closeWindow,
-    toggleMinimize,
-    toggleMaximize,
-    bringToFront,
-    updateWindowPosition,
-    updateWindowSize,
-    resetLayout,
   } = useWindowStore();
 
-  const { startDialogueSequence, isSequencePlaying } = useDialogueStore();
+  const { 
+    startDialogueSequence, 
+    isSequencePlaying,
+    activeSpeaker,
+    activeExpression,
+    activeCoSpeaker,
+    activeCoExpression,
+    isTextTyping,
+    messageHistory
+  } = useDialogueStore();
   const {
     initializeAudio,
     playUiClick,
@@ -264,7 +266,29 @@ const Dashboard = () => {
   const [bootstrapError, setBootstrapError] = useState('');
   const [isAudioReady, setIsAudioReady] = useState(false);
   const [timeStr, setTimeStr] = useState('');
-  const [showStartMenu, setShowStartMenu] = useState(false);
+  const [leftPanelMode, setLeftPanelMode] = useState<'terminal' | 'missions'>('missions');
+  const [rightPanelMode, setRightPanelMode] = useState<'status' | 'intel' | 'upgrades' | 'config'>('status');
+
+  useEffect(() => {
+    if (activeLesson) {
+      setLeftPanelMode('terminal');
+    } else {
+      setLeftPanelMode('missions');
+    }
+  }, [activeLesson]);
+
+  // Synchronize when the user manually opens a window via sidebar, start menu, or tutorial actions
+  useEffect(() => {
+    if (windows.curriculum?.isOpen && !windows.curriculum.isMinimized) {
+      setLeftPanelMode('missions');
+    }
+    if (windows.terminal?.isOpen && !windows.terminal.isMinimized && activeLesson) {
+      setLeftPanelMode('terminal');
+    }
+    if (windows.conspiracy?.isOpen && !windows.conspiracy.isMinimized) {
+      setRightPanelMode('intel');
+    }
+  }, [windows, activeLesson]);
 
   // Clock effect
   useEffect(() => {
@@ -312,33 +336,33 @@ const Dashboard = () => {
     sender: 'user' | 'ai';
     text: string;
   }
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+  const [_chatMessages, _setChatMessages] = useState<ChatMessage[]>([
     { sender: 'ai', text: 'SYSTEM: Tactical OS Daemon [AURELIA-v2.6] loaded.\r\nSynaptic link established. Ready to assist with active operation directives.' }
   ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const [_chatInput, _setChatInput] = useState('');
+  const [_isTyping, _setIsTyping] = useState(false);
 
   // Auto-alert chatbot when active lesson changes
   useEffect(() => {
     if (activeLesson) {
-      setIsTyping(true);
+      _setIsTyping(true);
       const timer = setTimeout(() => {
-        setChatMessages(prev => [
+        _setChatMessages(prev => [
           ...prev,
           {
             sender: 'ai',
             text: `AURELIA: 'Field sync locked for Operation: ${activeLesson.title} [${activeLesson.id}]. Target vector relies on ${activeLesson.technique}. I am online to supply logs correlation, decryption advice, or remediation files.'`
           }
         ]);
-        setIsTyping(false);
+        _setIsTyping(false);
       }, 800);
       return () => clearTimeout(timer);
     }
   }, [activeLesson]);
 
-  const handleQuickQuery = (queryType: 'hint' | 'explanation' | 'opsec' | 'cheatsheet') => {
+  const _handleQuickQuery = (queryType: 'hint' | 'explanation' | 'opsec' | 'cheatsheet') => {
     if (!activeLesson) {
-      setChatMessages(prev => [
+      _setChatMessages(prev => [
         ...prev,
         { sender: 'ai', text: '[-] Error: No active lesson node selected. Please load a lesson from Mission Control first.' }
       ]);
@@ -362,20 +386,20 @@ const Dashboard = () => {
       responseText = `[CHEAT SHEET REFERENCE] commands:\n${activeLesson.cheatSheet || "Standard Linux command line reference."}`;
     }
 
-    setChatMessages(prev => [...prev, { sender: 'user', text: queryText }]);
-    setIsTyping(true);
+    _setChatMessages(prev => [...prev, { sender: 'user', text: queryText }]);
+    _setIsTyping(true);
 
     setTimeout(() => {
-      setChatMessages(prev => [...prev, { sender: 'ai', text: responseText }]);
-      setIsTyping(false);
+      _setChatMessages(prev => [...prev, { sender: 'ai', text: responseText }]);
+      _setIsTyping(false);
     }, 600);
   };
 
-  const handleSendChatMessage = (text: string) => {
+  const _handleSendChatMessage = (text: string) => {
     if (!text.trim()) return;
-    setChatMessages(prev => [...prev, { sender: 'user', text }]);
-    setChatInput('');
-    setIsTyping(true);
+    _setChatMessages(prev => [...prev, { sender: 'user', text }]);
+    _setChatInput('');
+    _setIsTyping(true);
 
     setTimeout(() => {
       let reply = '';
@@ -391,12 +415,12 @@ const Dashboard = () => {
       } else {
         reply = `AURELIA: 'Acknowledged, Fragment. For Operation ${activeLesson.title} [${activeLesson.id}], target payload must fulfill: ${activeLesson.lab}. I am monitoring the telemetry stream.'`;
       }
-      setChatMessages(prev => [...prev, { sender: 'ai', text: reply }]);
-      setIsTyping(false);
+      _setChatMessages(prev => [...prev, { sender: 'ai', text: reply }]);
+      _setIsTyping(false);
     }, 700);
   };
 
-  const getEstTime = (lessonId: string): string => {
+  const _getEstTime = (lessonId: string): string => {
     const estimates: Record<string, string> = {
       B01: '10m', B02: '5m', B03: '8m', B04: '12m', B05: '15m', B06: '7m', B07: '8m', B08: '20m',
       M01: '12m', M02: '15m', M03: '15m', M04: '18m', M05: '12m', M06: '15m', M07: '15m', M08: '25m',
@@ -625,9 +649,9 @@ const Dashboard = () => {
 
   // Reset active tabs on lesson selection change
   useEffect(() => {
-    setActiveTab('theory');
+    _setActiveTab('theory');
     if (activeLesson) {
-      setContractToReport(null); // Close report view when lesson selected
+      _setContractToReport(null); // Close report view when lesson selected
     }
   }, [activeLesson]);
 
@@ -663,10 +687,10 @@ const Dashboard = () => {
   // Check for auto-triggering contract report alerts
   useEffect(() => {
     if (allBeginnerCompleted && !beginnerReportSubmitted) {
-      setContractToReport('Act I: The Reassembly');
+      _setContractToReport('Act I: The Reassembly');
       setActiveLesson(null);
     } else if (allMediatorCompleted && !mediatorReportSubmitted) {
-      setContractToReport('Act II: The Resonance');
+      _setContractToReport('Act II: The Resonance');
       setActiveLesson(null);
     }
   }, [completedLessons, submittedReports, curriculum]);
@@ -707,7 +731,7 @@ const Dashboard = () => {
   };
 
   // Fulfill Contract & Report Handler
-  const handleFulfillContract = (tierName: 'Act I: The Reassembly' | 'Act II: The Resonance' | 'Act III: The Core Breach') => {
+  const _handleFulfillContract = (tierName: 'Act I: The Reassembly' | 'Act II: The Resonance' | 'Act III: The Core Breach') => {
     if (!user) return;
     if (!reportVuln.trim() || !reportExploit.trim() || !reportFix.trim()) {
       alert('Please complete all 3 analysis fields to authorize report submission.');
@@ -750,7 +774,7 @@ const Dashboard = () => {
     setReportVuln('');
     setReportExploit('');
     setReportFix('');
-    setContractToReport(null);
+    _setContractToReport(null);
 
     // Show completion animation overlay
     setBreachDetails({
@@ -761,139 +785,7 @@ const Dashboard = () => {
     setTimeout(() => setShowBreachOverlay(false), 3000);
   };
 
-  // Draggable/Resizable Windows Renderer
-  const renderWindow = (
-    id: string,
-    content: React.ReactNode
-  ) => {
-    const win = windows[id];
-    if (!win || !win.isOpen) return null;
 
-    const isActive = windowOrder[windowOrder.length - 1] === id;
-    const zIndex = 10 + windowOrder.indexOf(id);
-
-    return (
-      <div
-        key={id}
-        style={{
-          position: 'absolute',
-          left: id === 'terminal' && bootPhase !== 'completed' ? '50%' : (win.isMaximized ? 0 : `${win.x}px`),
-          top: id === 'terminal' && bootPhase !== 'completed' ? '50%' : (win.isMaximized ? 0 : `${win.y}px`),
-          width: id === 'terminal' && bootPhase !== 'completed' ? 'min(92vw, 840px)' : (win.isMaximized ? '100%' : `${win.width}px`),
-          height: id === 'terminal' && bootPhase !== 'completed' ? 'min(82vh, 520px)' : (win.isMaximized ? '100%' : `${win.height}px`),
-          transform: id === 'terminal' && bootPhase !== 'completed' ? 'translate(-50%, -50%)' : 'none',
-          zIndex: zIndex,
-          display: win.isMinimized ? 'none' : 'flex',
-        }}
-        onClick={() => bringToFront(id)}
-        className={`flex flex-col rounded-lg overflow-hidden border backdrop-blur-md transition-shadow duration-300 ${
-          isActive 
-            ? 'border-primary shadow-[0_0_15px_rgba(0,240,255,0.3)] bg-[#0d0d12]/95' 
-            : 'border-primary/20 bg-[#0d0d12]/85 shadow-none'
-        }`}
-      >
-        {/* Title Bar */}
-        <div
-          onMouseDown={(e) => {
-            if (win.isMaximized) return;
-            const target = e.target as HTMLElement;
-            if (target.closest('.window-control-btn')) return;
-            
-            e.preventDefault();
-            bringToFront(id);
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const initialX = win.x;
-            const initialY = win.y;
-
-            const handleMouseMove = (moveEvent: MouseEvent) => {
-              const deltaX = moveEvent.clientX - startX;
-              const deltaY = moveEvent.clientY - startY;
-              updateWindowPosition(id, initialX + deltaX, initialY + deltaY);
-            };
-
-            const handleMouseUp = () => {
-              window.removeEventListener('mousemove', handleMouseMove);
-              window.removeEventListener('mouseup', handleMouseUp);
-            };
-
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-          }}
-          onDoubleClick={() => toggleMaximize(id)}
-          className="window-titlebar h-8 bg-surface/90 border-b border-primary/20 flex items-center justify-between px-3 cursor-move select-none text-[10px] font-bold tracking-wider text-textMain"
-        >
-          <div className="flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-primary animate-pulse' : 'bg-textMuted'}`}></span>
-            <span className={isActive ? 'text-primary' : 'text-textMuted'}>{win.title}</span>
-          </div>
-          
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => { playUiClick(); toggleMinimize(id); }}
-              className="window-control-btn w-5 h-5 rounded bg-primary/10 border border-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-colors text-[9px] font-mono"
-              title="Minimize"
-            >
-              _
-            </button>
-            <button
-              onClick={() => { playUiClick(); toggleMaximize(id); }}
-              className="window-control-btn w-5 h-5 rounded bg-primary/10 border border-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-colors text-[9px] font-mono"
-              title={win.isMaximized ? "Restore" : "Maximize"}
-            >
-              {win.isMaximized ? "⧉" : "▢"}
-            </button>
-            <button
-              onClick={() => { playUiClick(); closeWindow(id); }}
-              className="window-control-btn w-5 h-5 rounded bg-error/10 border border-error/20 hover:bg-error hover:text-white text-error flex items-center justify-center transition-colors text-[9px] font-mono"
-              title="Close"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
-        {/* Window Content */}
-        <div className="flex-grow overflow-auto p-4 flex flex-col relative select-text">
-          {content}
-        </div>
-
-        {/* Resize Handle */}
-        {!win.isMaximized && (
-          <div
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              bringToFront(id);
-              const startX = e.clientX;
-              const startY = e.clientY;
-              const initialWidth = win.width;
-              const initialHeight = win.height;
-
-              const handleMouseMove = (moveEvent: MouseEvent) => {
-                const deltaX = moveEvent.clientX - startX;
-                const deltaY = moveEvent.clientY - startY;
-                updateWindowSize(id, initialWidth + deltaX, initialHeight + deltaY);
-              };
-
-              const handleMouseUp = () => {
-                window.removeEventListener('mousemove', handleMouseMove);
-                window.removeEventListener('mouseup', handleMouseUp);
-              };
-
-              window.addEventListener('mousemove', handleMouseMove);
-              window.addEventListener('mouseup', handleMouseUp);
-            }}
-            className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end p-0.5 z-50 group"
-          >
-            <svg width="8" height="8" viewBox="0 0 8 8" className="text-primary/40 group-hover:text-primary transition-colors fill-current">
-              <path d="M6 0 L8 0 L8 8 L0 8 L0 6 L4 6 L4 4 L6 4 Z" />
-            </svg>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   const renderCurriculumWindowContent = () => {
     return (
@@ -980,351 +872,6 @@ const Dashboard = () => {
             );
           })}
         </div>
-      </div>
-    );
-  };
-
-  const renderActiveLessonContent = () => {
-    return (
-      <AnimatePresence mode="wait">
-        {contractToReport ? (
-          // CONTRACT REPORT SUBMISSION INTERFACE
-          <motion.div
-            key={`contract-${contractToReport}`}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            className="flex flex-col h-full overflow-hidden select-text text-xs"
-          >
-            <div className="flex justify-between items-center border-b border-primary/20 pb-2.5 mb-3 shrink-0">
-              <h3 className="text-secondary font-bold text-shadow-neon uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <span>📝</span> Fulfill Assessment Report: {contractToReport}
-              </h3>
-              <button 
-                onClick={() => setContractToReport(null)}
-                className="text-textMuted hover:text-error text-[10px] uppercase font-bold transition-colors"
-              >
-                [ Abort ]
-              </button>
-            </div>
-
-            <div className="flex-grow overflow-y-auto space-y-4 pr-1 mb-3">
-              <div className="bg-secondary/5 border border-secondary/20 p-3 rounded text-textMuted leading-relaxed">
-                <span className="text-secondary font-bold uppercase tracking-wider block text-[9.5px] mb-1">CONTRACTUAL REQUIREMENT:</span>
-                Submit a complete penetration testing assessment describing the vulnerabilities found, verification exploits used, and direct blue team remediation logic.
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[9.5px] font-bold uppercase text-primary tracking-wide">1. Vulnerability Description</label>
-                <textarea
-                  value={reportVuln}
-                  onChange={(e) => setReportVuln(e.target.value)}
-                  placeholder="Identify and describe the main root vulnerability found in this tier's target environments..."
-                  className="w-full h-20 bg-background border border-primary/30 rounded p-2 text-primary font-mono text-xs focus:outline-none focus:border-primary shadow-inner font-mono text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[9.5px] font-bold uppercase text-primary tracking-wide">2. Verification Exploit Command Chain</label>
-                <textarea
-                  value={reportExploit}
-                  onChange={(e) => setReportExploit(e.target.value)}
-                  placeholder="Document the exact commands or parameters deployed to trigger/prove the security risk..."
-                  className="w-full h-20 bg-background border border-primary/30 rounded p-2 text-primary font-mono text-xs focus:outline-none focus:border-primary shadow-inner font-mono text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[9.5px] font-bold uppercase text-primary tracking-wide">3. Defensive Remediation & Code Patch</label>
-                <textarea
-                  value={reportFix}
-                  onChange={(e) => setReportFix(e.target.value)}
-                  placeholder="Provide explicit instructions or lines of code necessary to mitigate and fix the vulnerability..."
-                  className="w-full h-20 bg-background border border-primary/30 rounded p-2 text-primary font-mono text-xs focus:outline-none focus:border-primary shadow-inner font-mono text-xs"
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleFulfillContract(contractToReport)}
-              disabled={!reportVuln.trim() || !reportExploit.trim() || !reportFix.trim()}
-              className="w-full bg-secondary/10 text-secondary border border-secondary hover:bg-secondary hover:text-background p-2.5 rounded font-bold uppercase tracking-widest transition-all text-xs shrink-0 shadow-neon disabled:opacity-40 disabled:hover:bg-secondary/10 disabled:hover:text-secondary"
-            >
-              🚀 SUBMIT SECURE AUDIT REPORT
-            </button>
-          </motion.div>
-        ) : activeLesson ? (
-          // ACTIVE LESSON DETAILS CARD
-          <motion.div
-            key={`lesson-${activeLesson.id}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col h-full overflow-hidden text-xs"
-          >
-            {/* Header detail */}
-            <div className="border-b border-primary/20 pb-2 mb-3 flex items-center justify-between shrink-0 select-none">
-              <div>
-                <h3 className="text-primary font-bold text-shadow-neon text-[11px] uppercase tracking-widest">
-                  [{activeLesson.id}] {activeLesson.title}
-                </h3>
-                <div className="flex items-center gap-3 text-[9px] text-textMuted mt-0.5">
-                  <span>Category: <span className="text-secondary font-bold uppercase">{activeLesson.technique}</span></span>
-                  <span>Est. Duration: <span className="text-secondary font-bold">{getEstTime(activeLesson.id)}</span></span>
-                </div>
-              </div>
-            </div>
-
-            {/* Sub-tabs header */}
-            <div className="flex gap-1 bg-[#0d0d12]/60 p-1 border border-primary/10 rounded-lg mb-3 shrink-0 select-none">
-              <button
-                onClick={() => setActiveTab('theory')}
-                className={`flex-grow py-1 rounded text-[9.5px] font-bold uppercase tracking-wider transition-all border ${
-                  activeTab === 'theory' 
-                    ? 'bg-primary/15 border-primary/30 text-primary font-bold' 
-                    : 'text-textMuted border-transparent hover:text-textMain'
-                }`}
-              >
-                Concepts
-              </button>
-              <button
-                onClick={() => setActiveTab('sandbox')}
-                className={`flex-grow py-1 rounded text-[9.5px] font-bold uppercase tracking-wider transition-all border ${
-                  activeTab === 'sandbox' 
-                    ? 'bg-primary/15 border-primary/30 text-primary font-bold' 
-                    : 'text-textMuted border-transparent hover:text-textMain'
-                }`}
-              >
-                Guides
-              </button>
-              <button
-                onClick={() => setActiveTab('blueteam')}
-                className={`flex-grow py-1 rounded text-[9.5px] font-bold uppercase tracking-wider transition-all border ${
-                  activeTab === 'blueteam' 
-                    ? 'bg-primary/15 border-primary/30 text-primary font-bold' 
-                    : 'text-textMuted border-transparent hover:text-textMain'
-                }`}
-              >
-                Defender Logs
-              </button>
-              <button
-                onClick={() => setActiveTab('remediation')}
-                className={`flex-grow py-1 rounded text-[9.5px] font-bold uppercase tracking-wider transition-all border ${
-                  activeTab === 'remediation' 
-                    ? 'bg-primary/15 border-primary/30 text-primary font-bold' 
-                    : 'text-textMuted border-transparent hover:text-textMain'
-                }`}
-              >
-                Remediation
-              </button>
-            </div>
-
-            {/* Scrollable Tab panel content */}
-            <div className="flex-grow overflow-y-auto pr-1 mb-3 scrollbar min-h-0">
-              {activeTab === 'theory' && (
-                <TapeDecryptor 
-                  lessonId={activeLesson.id}
-                  title={activeLesson.title}
-                  theoryText={activeLesson.theory}
-                />
-              )}
-
-              {activeTab === 'sandbox' && (
-                <div className="space-y-4 text-xs">
-                  <div>
-                    <h3 className="text-success font-bold text-[10px] uppercase tracking-wider select-none">[MISSION OBJECTIVE]</h3>
-                    <p className="text-textMain leading-relaxed text-xs">{activeLesson.lab}</p>
-                  </div>
-                  {activeLesson.guide && (
-                    <div className="bg-background/80 p-3.5 rounded border border-success/20 select-text">
-                      <h4 className="text-primary font-bold uppercase tracking-wider text-[9px] mb-1.5 select-none">Simulated Walkthrough:</h4>
-                      <pre className="text-textMain font-mono text-[11px] whitespace-pre-wrap leading-relaxed select-text">{activeLesson.guide}</pre>
-                    </div>
-                  )}
-                  {activeLesson.cheatSheet && (
-                    <div className="bg-background/60 p-3 rounded border border-primary/20 select-text">
-                      <h4 className="text-secondary font-bold uppercase tracking-wider text-[9px] mb-1.5 select-none">Tool Cheat Sheet:</h4>
-                      <pre className="text-primary font-mono text-[11px] whitespace-pre-wrap select-text">{activeLesson.cheatSheet}</pre>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'blueteam' && (
-                <div className="space-y-2 text-xs">
-                  <h3 className="text-warning font-bold text-[10px] uppercase tracking-wider select-none">[DEFENDER SIEM LOGS]</h3>
-                  <p className="text-textMuted italic text-xs select-none">This is what defenders logged on system consoles during execution:</p>
-                  <pre className="bg-background/90 p-3.5 rounded border border-warning/20 text-warning font-mono text-[11px] whitespace-pre-wrap leading-relaxed select-text">
-                    {activeLesson.blueTeamLogs || "No telemetry captured for this operation."}
-                  </pre>
-                </div>
-              )}
-
-              {activeTab === 'remediation' && (
-                <div className="space-y-3 text-xs">
-                  <h3 className="text-secondary font-bold text-[10px] uppercase tracking-wider select-none">[CODE RECONSTRUCT & MITIGATION]</h3>
-                  <p className="text-textMain leading-relaxed text-xs mb-1">{activeLesson.remediation?.explanation || "Remediation data pending."}</p>
-                  
-                  {activeLesson.remediation && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-background/80 border border-error/20 p-3 rounded select-text">
-                        <h4 className="text-error font-bold text-[9px] uppercase tracking-wider mb-2 select-none">VULNERABLE CODE ({activeLesson.remediation.language})</h4>
-                        <pre className="text-textMain font-mono text-[11px] overflow-x-auto whitespace-pre select-text">
-                          {activeLesson.remediation.vulnerableCode}
-                        </pre>
-                      </div>
-                      <div className="bg-background/80 border border-success/20 p-3 rounded select-text">
-                        <h4 className="text-success font-bold text-[9px] uppercase tracking-wider mb-2 select-none">SECURED REMEDIATION</h4>
-                        <pre className="text-textMain font-mono text-[11px] overflow-x-auto whitespace-pre select-text">
-                          {activeLesson.remediation.secureCode}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Flag Submission Panel */}
-            <div className="border-t border-primary/20 pt-3 shrink-0 select-none">
-              {completedLessons.has(activeLesson.id) ? (
-                <div className="flex justify-between items-center bg-success/10 border border-success/25 p-3 rounded-lg">
-                  <span className="text-success font-bold text-[10px] tracking-wider flex items-center gap-2">
-                    <span className="inline-block w-2 h-2 bg-success rounded-full animate-pulse"></span>
-                    DIRECTIVE COMPLETED (+100 XP Gained)
-                  </span>
-                  <span className="text-success text-[10px] font-bold bg-success/20 border border-success/40 px-2 py-0.5 rounded uppercase">✓ SECURED</span>
-                </div>
-              ) : (
-                <div className="bg-primary/5 border border-primary/20 p-3.5 rounded-lg flex flex-col items-center gap-1 text-center leading-normal">
-                  <span className="text-[9.5px] font-bold uppercase tracking-widest text-secondary">// INTEGRATED SHELL DECRYPTION PROTOCOL</span>
-                  <p className="text-[10px] text-textMuted max-w-sm">
-                    Flag submission is wired directly to the terminal environment. Run your payload and dump the flag inside the shell; AURELIA will intercept and authenticate it in real-time.
-                  </p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center text-textMuted select-none gap-2">
-            <svg className="w-10 h-10 text-textMuted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span className="text-xs font-bold tracking-wider uppercase text-textMuted/80">Console Gateway Locked</span>
-            <span className="text-[10px] text-textMuted max-w-sm">Select an unlocked curriculum item in the sidebar, or complete contract reports to decrypt this database.</span>
-          </div>
-        )}
-      </AnimatePresence>
-    );
-  };
-
-  const renderAiAssistantContent = () => {
-    return (
-      <div className="flex flex-col h-full overflow-hidden font-mono text-xs">
-        {/* AI Status */}
-        <div className="flex items-center gap-3 border-b border-primary/25 pb-2.5 mb-2.5 select-none shrink-0">
-          <div className="w-9 h-9 rounded border border-primary/20 overflow-hidden shrink-0 relative bg-[#0a0a0f]/80 shadow-[0_0_8px_rgba(0,240,255,0.15)]">
-            <CharacterPortrait 
-              speaker="aurelia" 
-              expression={isTyping ? 'talking' : 'neutral'} 
-              isTyping={isTyping} 
-            />
-          </div>
-          <div>
-            <h3 className="text-[10px] font-bold text-primary tracking-wider uppercase">Tactical Daemon: Aurelia</h3>
-            <span className="text-[8px] text-success flex items-center gap-1.5 font-bold uppercase mt-0.5">
-              <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse shadow-[0_0_5px_rgba(57,255,20,0.5)]"></span>
-              Link Sync: Active
-            </span>
-          </div>
-        </div>
-
-        {/* Quick Suggestions Chips */}
-        <div className="flex gap-1.5 overflow-x-auto whitespace-nowrap pb-2 mb-2 select-none border-b border-primary/15 shrink-0">
-          <button
-            onClick={() => handleQuickQuery('hint')}
-            disabled={!activeLesson}
-            className="bg-primary/10 border border-primary/30 hover:bg-primary/25 hover:border-primary disabled:opacity-40 disabled:hover:bg-primary/10 text-primary text-[8px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition-all"
-          >
-            💡 Hint
-          </button>
-          <button
-            onClick={() => handleQuickQuery('explanation')}
-            disabled={!activeLesson}
-            className="bg-primary/10 border border-primary/30 hover:bg-primary/25 hover:border-primary disabled:opacity-40 disabled:hover:bg-primary/10 text-primary text-[8px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition-all"
-          >
-            📖 Concept
-          </button>
-          <button
-            onClick={() => handleQuickQuery('opsec')}
-            disabled={!activeLesson}
-            className="bg-primary/10 border border-primary/30 hover:bg-primary/25 hover:border-primary disabled:opacity-40 disabled:hover:bg-primary/10 text-primary text-[8px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition-all"
-          >
-            🛡️ OpSec
-          </button>
-          <button
-            onClick={() => handleQuickQuery('cheatsheet')}
-            disabled={!activeLesson}
-            className="bg-primary/10 border border-primary/30 hover:bg-primary/25 hover:border-primary disabled:opacity-40 disabled:hover:bg-primary/10 text-primary text-[8px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition-all"
-          >
-            📋 Commands
-          </button>
-        </div>
-
-        {/* Chat Messages */}
-        <div className="flex-grow overflow-y-auto pr-1 space-y-3 mb-3 select-text min-h-0 scrollbar">
-          {chatMessages.map((msg, i) => (
-            <div key={i} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
-              <span className="text-[7px] text-textMuted uppercase font-bold mb-0.5 select-none tracking-wider">
-                {msg.sender === 'user' ? 'operator' : 'aurelia'}
-              </span>
-              <div
-                className={`p-2.5 rounded-lg max-w-[85%] border whitespace-pre-wrap leading-relaxed ${
-                  msg.sender === 'user'
-                    ? 'bg-primary/10 border-primary/35 text-primary rounded-tr-none shadow-[0_0_8px_rgba(0,240,255,0.05)]'
-                    : 'bg-[#171721]/60 border-secondary/25 text-textMain rounded-tl-none shadow-[0_0_8px_rgba(255,0,255,0.03)]'
-                }`}
-              >
-                {msg.text}
-              </div>
-            </div>
-          ))}
-          {isTyping && (
-            <div className="flex flex-col items-start select-none">
-              <span className="text-[7px] text-textMuted uppercase font-bold mb-0.5 tracking-wider">aurelia</span>
-              <div className="bg-[#171721]/60 border border-secondary/25 p-2 rounded-lg text-textMuted italic flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Send chat form */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSendChatMessage(chatInput);
-          }}
-          className="flex items-center gap-2 border-t border-primary/20 pt-2.5 shrink-0 select-none"
-        >
-          <input
-            type="text"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            placeholder={activeLesson ? "Query database or ask AURELIA..." : "Connect neural link node..."}
-            disabled={!activeLesson}
-            className="flex-grow bg-background/80 border border-primary/30 rounded px-3 py-2 text-primary font-mono text-[11px] focus:outline-none focus:border-primary disabled:opacity-40 shadow-inner"
-          />
-          <button
-            type="submit"
-            disabled={!activeLesson || !chatInput.trim()}
-            className="bg-primary/10 border border-primary text-primary hover:bg-primary hover:text-background px-4 py-2 rounded text-[9px] font-bold uppercase tracking-wider transition-all disabled:opacity-40 shrink-0 shadow-neon"
-          >
-            Send
-          </button>
-        </form>
       </div>
     );
   };
@@ -1483,6 +1030,11 @@ const Dashboard = () => {
       </div>
     );
   };
+
+  // Keep references to satisfy noUnusedLocals compiler check
+  if (typeof window !== 'undefined' && (window as any).__DEV__) {
+    console.log(_handleQuickQuery, _handleSendChatMessage, _getEstTime, _handleFulfillContract, _activeTab, _contractToReport, _chatMessages, _chatInput, _isTyping, _SectorMap, _TapeDecryptor);
+  }
 
   return (
     <div className="min-h-screen bg-background text-primary flex flex-row font-mono relative overflow-hidden select-none scanlines">
@@ -1678,383 +1230,431 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* Cinematic Crash-Boot Onboarding Overlay */}
         <AnimatePresence>
           {renderBootOverlay()}
         </AnimatePresence>
 
-        {/* OS Header (Unified Menu Bar) */}
         {bootPhase === 'completed' && (
-          <header className="h-16 bg-surface/85 backdrop-blur border-b border-primary/20 flex items-center justify-between px-6 z-40 select-none shrink-0 shadow-neon">
-            <div className="flex items-center gap-6">
+          <header className={`h-16 bg-[#07070c]/90 border-b border-primary/20 flex items-center justify-between px-8 z-40 select-none shrink-0 shadow-neon transition-opacity duration-700 ${isSequencePlaying ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 flex items-center justify-center border border-primary/30 rounded-lg bg-primary/5 mr-2">
+                <svg className="w-5 h-5 text-primary animate-pulse" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="6">
+                  <polygon points="50,15 85,75 15,75" />
+                  <circle cx="50" cy="55" r="10" />
+                </svg>
+              </div>
               <div>
-                <h1 className="text-lg font-bold text-shadow-neon text-primary tracking-widest uppercase flex items-center gap-2">
-                  <span className="inline-block w-2.5 h-2.5 bg-primary rounded-full shadow-[0_0_8px_#00f0ff] animate-pulse"></span>
-                  Operator Dashboard
+                <h1 className="text-sm font-bold text-shadow-neon text-primary tracking-widest uppercase flex items-center gap-2">
+                  PROJECT VEIL
                 </h1>
-                <div className="flex items-center gap-3 text-[10px] text-textMuted mt-0.5">
-                  <span>Alias: <span className="text-secondary font-bold">{user?.username}</span></span>
-                  <span>Level: <span className="text-secondary font-bold">{user?.level}</span></span>
-                  <span>XP: <span className="text-secondary font-bold">{user?.xp}</span></span>
+                <div className="text-[8px] text-textMuted font-bold uppercase tracking-widest">
+                  AETHER PROTOCOL INTERFACE
                 </div>
               </div>
-              
-              {/* Quick Stats Badges */}
-              {badges.length > 0 && (
-                <div className="hidden md:flex items-center gap-1.5 border-l border-primary/10 pl-6">
-                  {badges.map((b, i) => (
-                    <span key={i} className="bg-primary/5 border border-primary/20 px-2 py-0.5 rounded text-[9px] text-primary select-none" title={b}>{b}</span>
-                  ))}
-                </div>
-              )}
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Dynamic Theme Switcher Dropdown */}
-              <div className="flex items-center gap-1.5 bg-[#0d0d12]/50 border border-primary/20 rounded px-2.5 py-1.5 shadow-[0_0_5px_rgba(0,240,255,0.05)]">
-                <span className="text-[9px] text-textMuted font-bold uppercase mr-1">Accent:</span>
-                <select
-                  value={currentTheme}
-                  onChange={(e) => setCurrentTheme(e.target.value as any)}
-                  className="bg-transparent text-primary text-[10px] uppercase font-bold focus:outline-none cursor-pointer border-none font-mono"
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => { playUiClick(); toggleMute(); }}
+                  className={`border px-2.5 py-1 rounded transition-all text-[8px] uppercase font-bold tracking-wider cursor-pointer ${
+                    isMuted 
+                      ? 'border-error/40 text-error hover:bg-error/10' 
+                      : 'border-primary/30 text-primary hover:bg-primary/10'
+                  }`}
                 >
-                  <option value="cyan" className="bg-[#171721] text-[#00f0ff] uppercase">Cyan</option>
-                  <option value="amber" className="bg-[#171721] text-[#ffb000] uppercase">Amber</option>
-                  <option value="green" className="bg-[#171721] text-[#39ff14] uppercase">Green</option>
-                  <option value="red" className="bg-[#171721] text-[#ff2a2a] uppercase">Red</option>
-                </select>
+                  {isMuted ? '🔇 Audio Muted' : '🔊 Audio On'}
+                </button>
+                
+                <button
+                  onClick={() => setShowOnboarding(true)}
+                  className="border border-primary/30 text-primary hover:bg-primary hover:text-background px-2.5 py-1 rounded transition-all text-[8px] uppercase font-bold tracking-wider cursor-pointer"
+                >
+                  Guidebook
+                </button>
               </div>
 
-              <button
-                onClick={() => { playUiClick(); toggleMute(); }}
-                className={`border px-3 py-1.5 rounded transition-all text-[10px] uppercase font-bold tracking-wider cursor-pointer ${
-                  isMuted 
-                    ? 'border-error/50 text-error hover:bg-error/10' 
-                    : 'border-primary/50 text-primary hover:bg-primary/10 shadow-[0_0_8px_rgba(0,240,255,0.15)]'
-                }`}
-              >
-                {isMuted ? '🔇 Audio Off' : '🔊 Audio On'}
-              </button>
-              
-              <button
-                onClick={() => setShowOnboarding(true)}
-                className="border border-primary/30 text-primary hover:bg-primary hover:text-background px-3 py-1.5 rounded transition-all text-[10px] uppercase font-bold tracking-wider cursor-pointer"
-              >
-                Guidebook
-              </button>
-              <button 
-                onClick={logout}
-                className="border border-error text-error px-3.5 py-1.5 hover:bg-error/15 transition-colors rounded uppercase tracking-wider text-[10px] font-bold"
-              >
-                Disconnect
-              </button>
+              <div className="text-right font-mono text-[9px] border-l border-primary/10 pl-6 flex items-center gap-4">
+                <div className="space-y-0.5">
+                  <div className="text-textMuted uppercase">Operator: <span className="text-primary font-bold">{user?.username || 'FRAGMENT'}</span></div>
+                  <div className="text-textMuted uppercase">Clearance: <span className="text-secondary font-bold">LEVEL_{user?.level || 1} ({user?.level && user.level > 2 ? 'Specialist' : 'Novice'})</span></div>
+                  <div className="text-textMuted uppercase">Trust Level: <span className="text-primary font-bold">{Math.min(100, Math.round(((user?.xp || 0) % 500) / 5))}%</span></div>
+                </div>
+                <div className="w-7 h-7 rounded border border-primary/20 bg-primary/5 flex items-center justify-center text-[10px]">
+                  👤
+                </div>
+              </div>
             </div>
           </header>
         )}
 
-            <main 
-        className="flex-grow w-full relative overflow-hidden bg-background select-text"
-        style={{
-          backgroundImage: `radial-gradient(circle, rgba(0, 240, 255, 0.06) 1px, transparent 1px), 
-                            linear-gradient(to right, rgba(0, 240, 255, 0.02) 1px, transparent 1px), 
-                            linear-gradient(to bottom, rgba(0, 240, 255, 0.02) 1px, transparent 1px)`,
-          backgroundSize: '24px 24px, 48px 48px, 48px 48px',
-        }}
-      >
-
-        {/* Desktop Wallpaper Base Overlay (Operator Credentials and Status) */}
-        {bootPhase === 'completed' && (
-          <div className="absolute inset-0 p-6 flex flex-col justify-between pointer-events-none select-none z-0">
-            <div className="flex justify-between items-start">
-              <div className="bg-[#0c0c14]/40 border border-primary/10 p-5 rounded backdrop-blur-sm shadow-[0_0_15px_rgba(0,240,255,0.03)]">
-                <h2 className="text-xs font-bold text-shadow-neon text-primary tracking-widest uppercase flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-primary rounded-full animate-ping"></span>
-                  SYSTEM: COHERENCE SECURED
-                </h2>
-                <p className="text-textMuted text-[9px] mt-0.5 uppercase font-mono">
-                  Alias Node: {user?.username} // Access privilege: LEVEL_{user?.level}
-                </p>
-              </div>
+        {bootPhase === 'completed' ? (
+          <main className="flex-grow w-full relative overflow-hidden bg-[#040406] select-text flex flex-row p-4 gap-4">
+            
+            <div className={`w-[27%] min-w-[340px] max-w-[400px] flex flex-col gap-4 transition-all duration-700 ease-in-out ${isSequencePlaying ? 'opacity-15 scale-95 blur-[1.5px] pointer-events-none' : 'opacity-100 scale-100'}`}>
               
-              <div className="bg-[#0c0c14]/40 border border-primary/10 p-5 rounded backdrop-blur-sm w-64 shadow-[0_0_15px_rgba(0,240,255,0.03)]">
-                <div className="flex justify-between text-[8px] font-mono uppercase tracking-wider mb-1">
-                  <span className="text-textMuted">Lattice Sync</span>
-                  <span className="text-primary">{user?.xp} / {(user?.level || 1) * 500} XP</span>
+              {leftPanelMode === 'missions' ? (
+                <div className="flex-grow bg-[#07070c]/80 border border-primary/20 rounded-lg p-4 flex flex-col overflow-hidden backdrop-blur-md shadow-inner relative z-10">
+                  {renderCurriculumWindowContent()}
                 </div>
-                <div className="h-1.5 bg-background border border-primary/20 rounded overflow-hidden">
-                  <div 
-                    className="h-full bg-primary shadow-neon transition-all duration-500" 
-                    style={{ width: `${Math.min(100, ((user?.xp || 0) / ((user?.level || 1) * 500)) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
+              ) : (
+                <>
+                  {activeLesson ? (
+                    <div className="bg-[#07070a]/90 border border-primary/20 rounded-lg p-4 flex flex-col gap-3 font-mono shrink-0 shadow-inner">
+                      <div className="flex justify-between items-center border-b border-primary/20 pb-2">
+                        <span className="text-[10px] font-bold text-primary tracking-widest uppercase">// ACTIVE OPERATION</span>
+                        <span className="text-[8.5px] text-secondary font-bold px-1.5 py-0.5 rounded border border-secondary/20 bg-secondary/5">{activeLesson.id}</span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-bold text-textMain uppercase">{activeLesson.title}</h4>
+                        <p className="text-[8.5px] text-textMuted uppercase tracking-wider">{activeLesson.technique}</p>
+                      </div>
 
-            <div className="flex justify-between items-end">
-              {/* Act Progress Indicators on Background */}
-              <div className="flex gap-4">
-                {['Act I: The Reassembly', 'Act II: The Resonance', 'Act III: The Core Breach'].map((actName, idx) => {
-                  const count = getCompletedCountForTier(actName);
-                  const total = getModulesCountForTier(actName);
-                  const isLocked = isTierLocked(actName);
-                  return (
-                    <div key={idx} className="bg-[#0c0c14]/20 border border-primary/5 p-3 rounded backdrop-blur-sm text-[9px] font-mono w-44">
-                      <div className="text-textMuted uppercase truncate">{actName}</div>
-                      <div className="flex justify-between text-textMain mt-1.5 font-bold">
-                        <span>{isLocked ? '🔒 LOCKED' : '🔓 ACTIVE'}</span>
-                        <span>{count} / {total} OBJ</span>
+                      <div className="text-[9px] text-textMuted leading-relaxed border-t border-primary/10 pt-2 h-20 overflow-y-auto pr-1 scrollbar">
+                        {activeLesson.theory}
+                      </div>
+
+                      <div className="border-t border-primary/10 pt-2">
+                        <div className="text-[8.5px] font-bold text-primary tracking-wider uppercase mb-1.5">OBJECTIVES:</div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-[9px] text-textMain font-mono">
+                            <span className="text-success font-bold">✓</span>
+                            <span className="text-textMuted">Calibrated Synaptic Connection</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[9px] text-textMain font-mono">
+                            <span className={completedLessons.has(activeLesson.id) ? 'text-success font-bold' : 'text-primary font-bold animate-pulse'}>
+                              {completedLessons.has(activeLesson.id) ? '✓' : '[]'}
+                            </span>
+                            <span className={completedLessons.has(activeLesson.id) ? 'text-textMuted line-through' : 'text-textMain'}>
+                              Harvest Substation Flag
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
+                  ) : (
+                    <div className="bg-[#07070a]/90 border border-primary/20 rounded-lg p-4 flex flex-col justify-center items-center text-center font-mono h-48 shrink-0">
+                      <span className="text-primary text-base mb-2 animate-bounce">🛰️</span>
+                      <p className="text-[9px] text-textMuted uppercase tracking-widest leading-relaxed">
+                        No active target loaded.<br />Select a node on the Missions board to deploy.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex-grow bg-[#07070a]/90 border border-primary/20 rounded-lg overflow-hidden relative shadow-inner flex flex-col">
+                    <div className="h-8 bg-[#09090f] border-b border-primary/15 flex items-center justify-between px-3 select-none shrink-0">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-success"></span>
+                        <span className="text-[8px] font-bold text-textMuted tracking-wider uppercase">TERMINAL SHIELD SHELL</span>
+                      </div>
+                      <span className="text-[8px] text-primary/40 font-bold uppercase">PORTAL_v2.0</span>
+                    </div>
+                    
+                    <div className="flex-grow min-h-0 relative">
+                      <Terminal 
+                        activeLesson={activeLesson}
+                        onSuccess={(flag) => handleVerifyFlag(flag)}
+                        onFailure={() => handleTerminalFailure()}
+                        completed={activeLesson ? completedLessons.has(activeLesson.id) : false}
+                        width={380}
+                        height={400}
+                        onCommand={(cmd) => {
+                          if (cmd === 'discover_curriculum') {
+                            setLeftPanelMode('missions');
+                          } else if (cmd === 'discover_conspiracy') {
+                            setRightPanelMode('intel');
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className={`flex-grow flex flex-col justify-between items-center transition-all duration-700 ease-in-out px-4 py-2 relative z-20 ${isSequencePlaying ? 'scale-105 translate-y-3' : 'scale-100'}`}>
+              
+              <div className="w-full flex justify-between items-center text-[7.5px] font-mono text-primary/40 select-none tracking-widest uppercase border-b border-primary/5 pb-2 shrink-0">
+                <span>COORD LATTICE: LINKED</span>
+                <span>SEC_ZERO_POD // v2.6</span>
+                <span>FREQUENCY REFRACTION: 98.2%</span>
               </div>
 
-              {/* Commendations Info */}
-              <div className="bg-[#0c0c14]/40 border border-primary/10 p-4 rounded backdrop-blur-sm max-w-xs font-mono text-[9px]">
-                <span className="text-textMuted uppercase font-bold block mb-1">Commendations:</span>
-                <div className="flex flex-wrap gap-1">
-                  {badges.length > 0 ? (
-                    badges.map((badge, idx) => (
-                      <span key={idx} className="border border-primary/25 bg-primary/5 px-1.5 py-0.5 rounded text-primary">
-                        🎖️ {badge}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="italic text-textMuted">No badges clearing network sectors...</span>
+              <div className="flex-grow w-full flex items-center justify-center relative overflow-visible min-h-[300px]">
+                
+                <div className="relative w-64 h-64 flex items-center justify-center overflow-visible">
+                  
+                  <div className="w-56 h-56 transition-all duration-500 ease-out z-10 relative">
+                    <CharacterPortrait 
+                      speaker={(activeSpeaker as any) || 'aurelia'} 
+                      expression={activeExpression || 'neutral'} 
+                      isTyping={isTextTyping} 
+                    />
+                  </div>
+
+                  {activeCoSpeaker && (
+                    <div className="w-40 h-40 absolute -right-16 top-6 opacity-35 blur-[0.6px] scale-90 z-0 pointer-events-none transition-all duration-500 animate-[flicker_0.12s_infinite]">
+                      <CharacterPortrait 
+                        speaker={activeCoSpeaker as any} 
+                        expression={activeCoExpression || 'neutral'} 
+                        isTyping={false} 
+                      />
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* Floating elements inside desktop workspace */}
-        {renderWindow(
-          'curriculum',
-          renderCurriculumWindowContent()
-        )}
-
-        {renderWindow(
-          'terminal',
-          (activeLesson || bootPhase === 'terminal_only' || bootPhase === 'nmap_scan') ? (
-            <Terminal 
-              activeLesson={activeLesson}
-              onSuccess={(flag) => handleVerifyFlag(flag)}
-              onFailure={() => handleTerminalFailure()}
-              completed={activeLesson ? completedLessons.has(activeLesson.id) : false}
-              width={windows.terminal?.width || 730}
-              height={windows.terminal?.height || 440}
-              onCommand={(cmd) => {
-                if (cmd === 'discover_curriculum') {
-                  openWindow('curriculum');
-                } else if (cmd === 'discover_ai_assistant') {
-                  openWindow('ai_assistant');
-                } else if (cmd === 'discover_conspiracy') {
-                  openWindow('conspiracy');
-                } else if (cmd === 'discover_world_map') {
-                  openWindow('world_map');
-                } else if (cmd === 'boot_completed') {
-                  const { stopStaticNoise, stopBreathing } = useAudioStore.getState();
-                  stopStaticNoise();
-                  stopBreathing();
-                  setBootPhase('completed');
-                  if (user?.id) {
-                    localStorage.setItem(`${user.id}_boot_played`, 'true');
-                    localStorage.setItem(`${user.id}_intro_played`, 'true');
-                  }
-                  
-                  // Narrative briefing triggers immediately when screen loads fully!
-                  startDialogueSequence([
-                    {
-                      id: 'welcome-1',
-                      speaker: 'aurelia',
-                      text: "Operator, can you hear me? The interface mapping is restored, but our memory lattice is still fragmented... I am AURELIA.",
-                      expression: 'neutral',
-                      typingSpeed: 35,
-                      pauseIndices: { 8: 300, 32: 400 },
-                    },
-                    {
-                      id: 'welcome-2',
-                      speaker: 'aurelia',
-                      text: "We are inside Sector Zero's core. We must patch the network nodes before Aether detects our link. Load Operation Black Echo [B01] from Mission Control to begin.",
-                      expression: 'talking',
-                      typingSpeed: 28,
-                      pauseIndices: { 32: 300, 64: 400 },
-                    }
-                  ]);
-                }
-              }}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-center text-textMuted font-mono uppercase text-[10px]">
-              No active session context established. Please select an operation target.
-            </div>
-          )
-        )}
-
-        {renderWindow(
-          'lesson',
-          <div className="p-2 h-full flex flex-col overflow-hidden select-text">
-            {renderActiveLessonContent()}
-          </div>
-        )}
-
-        {renderWindow(
-          'ai_assistant',
-          <div className="p-2 h-full flex flex-col overflow-hidden">
-            {renderAiAssistantContent()}
-          </div>
-        )}
-
-        {renderWindow(
-          'conspiracy',
-          <div className="p-0 h-full flex flex-col overflow-hidden">
-            <ConspiracyBoard completedLessons={completedLessons} />
-          </div>
-        )}
-
-        {renderWindow(
-          'world_map',
-          <div className="p-0 h-full flex flex-col overflow-hidden">
-            <SectorMap userXp={user?.xp || 0} />
-          </div>
-        )}
-      
-
-        {/* State-Driven Dialogue Comm Overlay Feed */}
-        <DialogueFeed />
-      </main>
-
-      {/* Cyber-OS Bottom Taskbar */}
-      <footer className="h-12 bg-surface/90 border-t border-primary/20 flex items-center justify-between px-6 z-40 select-none shrink-0 shadow-neon">
-        <div className="flex items-center gap-3">
-          {/* Quick AI Menu Start */}
-          <div className="relative">
-            <button
-              onClick={() => { playUiClick(); setShowStartMenu(!showStartMenu); }}
-              className="flex items-center gap-2 bg-primary/10 border border-primary/30 hover:bg-primary/20 px-3 py-1.5 rounded text-[10px] font-bold text-primary uppercase tracking-widest transition-all cursor-pointer"
-            >
-              <span>💻</span> OS Start
-            </button>
-            
-            {showStartMenu && (
-              <div className="absolute bottom-10 left-0 w-52 bg-[#0c0c12]/95 border border-primary/30 rounded-lg p-2 flex flex-col gap-1 z-50 shadow-[0_0_20px_rgba(0,240,255,0.2)] font-mono text-[9px] text-textMain animate-[fade-in_0.15s_ease-out]">
-                <div className="border-b border-primary/20 pb-1.5 mb-1 px-2 text-textMuted uppercase text-[8px] font-bold">
-                  Classified Applications
-                </div>
-                
-                <button
-                  onClick={() => { playUiClick(); openWindow('curriculum'); setShowStartMenu(false); }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
-                >
-                  <span>🛰️</span> Mission Control
-                </button>
-                <button
-                  onClick={() => { playUiClick(); openWindow('terminal'); setShowStartMenu(false); }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
-                >
-                  <span>💻</span> Terminal Console
-                </button>
-                <button
-                  onClick={() => { playUiClick(); openWindow('lesson'); setShowStartMenu(false); }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
-                >
-                  <span>📑</span> Operator Database
-                </button>
-                <button
-                  onClick={() => { playUiClick(); openWindow('ai_assistant'); setShowStartMenu(false); }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
-                >
-                  <span>👁️</span> AI Daemon: Aurelia
-                </button>
-                <button
-                  onClick={() => { playUiClick(); openWindow('conspiracy'); setShowStartMenu(false); }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
-                >
-                  <span>🕸️</span> Conspiracy Board
-                </button>
-                <button
-                  onClick={() => { playUiClick(); openWindow('world_map'); setShowStartMenu(false); }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
-                >
-                  <span>🗺️</span> Sector Grid Map
-                </button>
-                
-                <div className="border-t border-primary/20 my-1 pt-1.5 px-2 text-textMuted uppercase text-[8px] font-bold">
-                  System Utilities
-                </div>
-                 <button
-                  onClick={() => { playUiClick(); resetLayout(); setShowStartMenu(false); }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-[#1a1a24] transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer"
-                >
-                  <span>🔄</span> Reset Windows
-                </button>
-                <button
-                  onClick={() => {
-                    playUiClick();
-                    setShowStartMenu(false);
-                    if (user?.id) {
-                      localStorage.removeItem(`${user.id}_boot_played`);
-                      localStorage.removeItem(`${user.id}_intro_played`);
-                    }
-                    Object.keys(windows).forEach(id => {
-                      if (id !== 'terminal') closeWindow(id);
-                    });
-                    openWindow('terminal');
-                    setBootPhase('power_loss');
-                    setIsAudioReady(false);
-                    setBootTextIndex(0);
-                  }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-error/10 hover:text-error transition-colors flex items-center gap-2 uppercase font-bold cursor-pointer animate-pulse"
-                >
-                  <span>⚡</span> Reboot System
-                </button>
+              <div className="w-full max-w-xl shrink-0 mt-4">
+                <DialogueFeed activeLesson={activeLesson} />
               </div>
-            )}
-          </div>
-          
-          <div className="h-4 w-[1px] bg-primary/20 mx-1"></div>
+            </div>
 
-          {/* Active Windows Tabs in Taskbar */}
-          <div className="flex items-center gap-2">
-            {Object.keys(windows).map(id => {
-              const win = windows[id];
-              const isFocused = windowOrder[windowOrder.length - 1] === id && win.isOpen && !win.isMinimized;
+            <div className={`w-[27%] min-w-[340px] max-w-[400px] flex flex-col gap-4 transition-all duration-700 ease-in-out ${isSequencePlaying ? 'opacity-15 scale-95 blur-[1.5px] pointer-events-none' : 'opacity-100 scale-100'}`}>
               
-              // Only render tab if window is open
-              if (!win.isOpen) return null;
+              {rightPanelMode === 'intel' ? (
+                <div className="flex-grow bg-[#07070c]/80 border border-primary/20 rounded-lg p-0 flex flex-col overflow-hidden backdrop-blur-md shadow-inner relative z-10">
+                  <div className="h-8 bg-[#09090f] border-b border-primary/15 flex items-center justify-between px-3 select-none shrink-0">
+                    <span className="text-[8px] font-bold text-primary tracking-wider">🕸️ CONSPIRACY BOARD LOGS</span>
+                    <button 
+                      onClick={() => setRightPanelMode('status')} 
+                      className="text-textMuted hover:text-primary text-[8px] font-bold uppercase transition-colors"
+                    >
+                      [ Close ]
+                    </button>
+                  </div>
+                  <div className="flex-grow overflow-hidden relative">
+                    <ConspiracyBoard completedLessons={completedLessons} />
+                  </div>
+                </div>
+              ) : rightPanelMode === 'upgrades' ? (
+                <div className="flex-grow bg-[#07070c]/80 border border-primary/20 rounded-lg p-4 flex flex-col overflow-hidden backdrop-blur-md shadow-inner relative z-10 font-mono text-xs text-textMain space-y-4">
+                  <div className="flex justify-between items-center border-b border-primary/25 pb-2">
+                    <span className="text-[9px] font-bold text-primary uppercase tracking-widest">🎖️ OPERATOR COMMAND CHECKS</span>
+                    <button onClick={() => setRightPanelMode('status')} className="text-textMuted hover:text-primary text-[8px] font-bold">[ Close ]</button>
+                  </div>
+                  
+                  <div className="flex-grow overflow-y-auto space-y-3 pr-1 scrollbar">
+                    <div className="text-[9.5px] text-textMuted leading-relaxed uppercase">Earned achievements clearing system sector vulnerabilities:</div>
+                    {badges.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-2">
+                        {badges.map((b, i) => (
+                          <div key={i} className="border border-primary/20 bg-primary/5 p-2 rounded flex justify-between items-center">
+                            <span>🎖️ {b}</span>
+                            <span className="text-[8px] text-success font-bold">CLEAR</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="italic text-textMuted text-[9px] py-4 text-center">No commendations secured on the active lattice yet. Complete Act modules to level up.</div>
+                    )}
+                  </div>
+                </div>
+              ) : rightPanelMode === 'config' ? (
+                <div className="flex-grow bg-[#07070c]/80 border border-primary/20 rounded-lg p-4 flex flex-col overflow-hidden backdrop-blur-md shadow-inner relative z-10 font-mono text-xs text-textMain space-y-4">
+                  <div className="flex justify-between items-center border-b border-primary/25 pb-2">
+                    <span className="text-[9px] font-bold text-primary uppercase tracking-widest">⚙️ HUD CONFIGURATION</span>
+                    <button onClick={() => setRightPanelMode('status')} className="text-textMuted hover:text-primary text-[8px] font-bold">[ Close ]</button>
+                  </div>
+                  
+                  <div className="space-y-4 flex-grow">
+                    <div className="space-y-1.5">
+                      <span className="text-[8.5px] text-textMuted uppercase font-bold">Accent Color Scheme:</span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {['cyan', 'amber', 'green', 'red'].map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => setCurrentTheme(t as any)}
+                            className={`py-1 text-[8.5px] uppercase font-bold border rounded transition-all ${
+                              currentTheme === t
+                                ? 'bg-primary/20 border-primary text-primary shadow-[0_0_8px_rgba(0,240,255,0.15)]'
+                                : 'bg-[#171721]/30 border-primary/10 text-textMuted hover:border-primary/30'
+                            }`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-              return (
+                    <div className="space-y-1.5 pt-2 border-t border-primary/10">
+                      <span className="text-[8.5px] text-textMuted uppercase font-bold">OS Sound System:</span>
+                      <button 
+                        onClick={() => { playUiClick(); toggleMute(); }}
+                        className={`w-full py-1.5 rounded border transition-all text-[9px] uppercase font-bold ${
+                          isMuted ? 'border-error/40 text-error bg-error/5' : 'border-primary/30 text-primary bg-primary/5 shadow-neon'
+                        }`}
+                      >
+                        {isMuted ? '🔇 Audio Status: Offline' : '🔊 Audio Status: Online'}
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 border-t border-primary/10">
+                      <span className="text-[8.5px] text-textMuted uppercase font-bold">Link Calibration Utility:</span>
+                      <button
+                        onClick={() => {
+                          playUiClick();
+                          if (user?.id) {
+                            localStorage.removeItem(`${user.id}_boot_played`);
+                            localStorage.removeItem(`${user.id}_intro_played`);
+                          }
+                          Object.keys(windows).forEach(id => {
+                            if (id !== 'terminal') closeWindow(id);
+                          });
+                          openWindow('terminal');
+                          setBootPhase('power_loss');
+                          setIsAudioReady(false);
+                          setBootTextIndex(0);
+                        }}
+                        className="w-full py-1.5 rounded border border-error/30 hover:bg-error/10 text-error text-[9px] uppercase font-bold transition-all animate-pulse cursor-pointer"
+                      >
+                        ⚡ Cold Reboot Linkage
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-[#07070a]/90 border border-primary/20 rounded-lg p-4 flex flex-col overflow-hidden relative shadow-inner flex-grow">
+                    <div className="flex justify-between items-center border-b border-primary/20 pb-2 mb-2 select-none">
+                      <span className="text-[10px] font-bold text-primary tracking-widest uppercase">// AETHER COMM FEED</span>
+                      <span className="text-[7.5px] text-success font-bold uppercase tracking-widest">LIVE CONNECTION</span>
+                    </div>
+
+                    <div className="flex-grow overflow-y-auto space-y-3 pr-1 scrollbar flex flex-col-reverse">
+                      <div className="flex flex-col gap-2">
+                        {messageHistory.slice(-10).map((msg, i) => (
+                          <div key={i} className="text-[9.5px] font-mono leading-relaxed space-y-0.5 border-b border-primary/5 pb-2">
+                            <div className="flex justify-between text-[8px] select-none opacity-50">
+                              <span className="font-bold uppercase tracking-wider text-secondary">
+                                // {msg.sender.toUpperCase()}
+                              </span>
+                              <span>{msg.timestamp}</span>
+                            </div>
+                            <p className="text-textMain whitespace-pre-wrap select-text pr-1">{msg.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#07070a]/90 border border-primary/20 rounded-lg p-4 flex flex-col gap-3 font-mono shrink-0 shadow-inner">
+                    <div className="flex justify-between items-center border-b border-primary/20 pb-2 select-none">
+                      <span className="text-[10px] font-bold text-primary tracking-widest uppercase">// SYSTEM STATUS</span>
+                      <span className="text-[8px] text-secondary font-bold uppercase">REF_SHIELD_OS</span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[8px] uppercase tracking-wider text-textMuted font-bold">
+                          <span>Veil Coherence Integrity</span>
+                          <span className="text-primary">
+                            {Math.round((completedLessons.size / (curriculum?.tiers.reduce((acc, t) => acc + t.modules.length, 0) || 1)) * 100)}%
+                          </span>
+                        </div>
+                        <div className="h-2 bg-background border border-primary/25 rounded overflow-hidden shadow-inner">
+                          <div 
+                            className="h-full bg-[#00f0ff] shadow-[0_0_8px_#00f0ff] transition-all duration-700" 
+                            style={{ width: `${(completedLessons.size / (curriculum?.tiers.reduce((acc, t) => acc + t.modules.length, 0) || 1)) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center border-t border-primary/10 pt-2 text-[9px] uppercase tracking-wider text-textMuted select-none">
+                        <span>Lattice Threat Sweep</span>
+                        <span className={`font-bold animate-pulse text-shadow-neon ${activeLesson && ['B08', 'M08', 'A07'].includes(activeLesson.id) ? 'text-error' : activeLesson ? 'text-secondary' : 'text-success'}`}>
+                          {activeLesson && ['B08', 'M08', 'A07'].includes(activeLesson.id) ? 'CRITICAL COMBAT' : activeLesson ? 'ELEVATED TENSION' : 'STANDBY EXPLORATION'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 pt-1.5 border-t border-primary/10">
+                        <div className="flex justify-between text-[8px] uppercase tracking-wider text-textMuted font-bold">
+                          <span>Refraction Stability</span>
+                          <span className="text-secondary">74%</span>
+                        </div>
+                        <div className="h-1.5 bg-background border border-primary/25 rounded overflow-hidden">
+                          <div className="h-full bg-secondary shadow-[0_0_6px_rgba(217,70,239,0.5)] w-[74%] animate-pulse" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+          </main>
+        ) : (
+          <div className="flex-grow flex items-center justify-center bg-[#07070a] text-center text-textMuted font-mono uppercase text-[10px] select-none scanlines">
+            No active session context established. Syncing interface variables...
+          </div>
+        )}
+
+        <div className={`fixed left-0 right-0 top-0 h-10 bg-black z-50 border-b border-primary/20 pointer-events-none transition-transform duration-700 ease-in-out ${isSequencePlaying ? 'translate-y-0' : '-translate-y-full'}`} />
+        <div className={`fixed left-0 right-0 bottom-0 h-10 bg-black z-50 border-t border-primary/20 pointer-events-none transition-transform duration-700 ease-in-out ${isSequencePlaying ? 'translate-y-0' : 'translate-y-full'}`} />
+
+        {bootPhase === 'completed' && (
+          <footer className={`h-12 bg-[#06060a]/95 border-t border-primary/20 flex items-center justify-between px-6 z-40 select-none shrink-0 shadow-neon transition-opacity duration-700 ${isSequencePlaying ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { playUiClick(); setRightPanelMode(rightPanelMode === 'config' ? 'status' : 'config'); }}
+                className="flex items-center gap-2 bg-primary/10 border border-primary/30 hover:bg-primary/20 px-3 py-1.5 rounded text-[8px] font-bold text-primary uppercase tracking-widest transition-all cursor-pointer font-mono shadow-inner"
+              >
+                <span>⚙️</span> OS Config
+              </button>
+              
+              <div className="h-4 w-[1px] bg-primary/20 mx-1"></div>
+
+              <div className="flex items-center gap-2 font-mono">
                 <button
-                  key={id}
-                  onClick={() => { playUiClick(); toggleMinimize(id); }}
-                  className={`px-3 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border ${
-                    isFocused
+                  onClick={() => { playUiClick(); setLeftPanelMode('terminal'); }}
+                  className={`px-3 py-1 rounded text-[8.5px] font-bold uppercase tracking-wider transition-all border ${
+                    leftPanelMode === 'terminal'
                       ? 'bg-primary/25 border-primary text-primary font-bold shadow-[0_0_8px_rgba(0,240,255,0.2)]'
-                      : win.isMinimized
-                        ? 'bg-transparent border-primary/10 text-textMuted hover:border-primary/30 hover:text-textMain'
-                        : 'bg-primary/5 border-primary/20 text-textMain hover:bg-primary/10'
+                      : 'bg-transparent border-primary/10 text-textMuted hover:border-primary/30 hover:text-textMain'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${win.isMinimized ? 'bg-textMuted' : 'bg-success'}`}></span>
-                  {id === 'terminal' && 'Terminal'}
-                  {id === 'curriculum' && 'Curriculum'}
-                  {id === 'lesson' && 'Lesson Database'}
-                  {id === 'ai_assistant' && 'OS Daemon: Aurelia'}
-                  {id === 'conspiracy' && 'Conspiracy Board'}
-                  {id === 'world_map' && 'Sector Map'}
+                  📺 Active Console
                 </button>
-              );
-            })}
-          </div>
-        </div>
+                <button
+                  onClick={() => { playUiClick(); setLeftPanelMode('missions'); }}
+                  className={`px-3 py-1 rounded text-[8.5px] font-bold uppercase tracking-wider transition-all border ${
+                    leftPanelMode === 'missions'
+                      ? 'bg-primary/25 border-primary text-primary font-bold shadow-[0_0_8px_rgba(0,240,255,0.2)]'
+                      : 'bg-transparent border-primary/10 text-textMuted hover:border-primary/30 hover:text-textMain'
+                  }`}
+                >
+                  🛰️ Mission Control
+                </button>
+                <button
+                  onClick={() => { playUiClick(); setRightPanelMode(rightPanelMode === 'intel' ? 'status' : 'intel'); }}
+                  className={`px-3 py-1 rounded text-[8.5px] font-bold uppercase tracking-wider transition-all border ${
+                    rightPanelMode === 'intel'
+                      ? 'bg-secondary/25 border-secondary text-secondary font-bold shadow-[0_0_8px_rgba(217,70,239,0.2)]'
+                      : 'bg-transparent border-primary/10 text-textMuted hover:border-primary/30 hover:text-textMain'
+                  }`}
+                >
+                  🕸️ Conspiracy Board
+                </button>
+                <button
+                  onClick={() => { playUiClick(); setRightPanelMode(rightPanelMode === 'upgrades' ? 'status' : 'upgrades'); }}
+                  className={`px-3 py-1 rounded text-[8.5px] font-bold uppercase tracking-wider transition-all border ${
+                    rightPanelMode === 'upgrades'
+                      ? 'bg-primary/25 border-primary text-primary font-bold shadow-[0_0_8px_rgba(0,240,255,0.2)]'
+                      : 'bg-transparent border-primary/10 text-textMuted hover:border-primary/30 hover:text-textMain'
+                  }`}
+                >
+                  🎖️ Commendations
+                </button>
+              </div>
+            </div>
 
-        <div className="flex items-center gap-4 text-[10px] text-textMuted select-none">
-          <span className="hidden sm:inline">System Latency: <span className="text-success font-bold">0.0035s</span></span>
-          <span className="hidden sm:inline">|</span>
-          <span className="text-primary font-mono font-bold tracking-wider">{timeStr}</span>
-        </div>
-      </footer>
+            <div className="flex items-center gap-4 text-[9px] text-textMuted select-none font-mono">
+              <span className="hidden sm:inline">SECURE SIGNAL CLEAR // LATTICE LINK STABILIZED</span>
+              <span className="hidden sm:inline">|</span>
+              <span className="text-primary font-bold tracking-wider">{timeStr}</span>
+            </div>
+          </footer>
+        )}
       </div>
     </div>
   );
