@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 interface CharacterPortraitProps {
-  speaker: 'aurelia' | 'hesper' | 'kaelen' | 'byte' | 'operator';
+  speaker: 'aurelia' | 'hesper' | 'kaelen' | 'byte' | 'operator' | 'valkyrie' | 'cyra' | 'lyra' | 'solene' | 'vance';
   expression: string;
   isTyping: boolean;
 }
@@ -68,7 +68,6 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
   useEffect(() => {
     const triggerBlink = () => {
       if (expression === 'panic') {
-        // Suspend natural blinks during wide-eyed panic states
         blinkTimeout = setTimeout(triggerBlink, 3000);
         return;
       }
@@ -129,6 +128,46 @@ export const CharacterPortrait: React.FC<CharacterPortraitProps> = ({
           contrastHex: '#7f1d1d',
           name: 'BYTE // CORE GATEWAY SENTINEL',
           emitterGlow: 'shadow-[0_0_20px_rgba(239,68,68,0.4)]',
+        };
+      case 'valkyrie':
+        return {
+          glow: 'rgba(255, 0, 51, 0.5)',
+          hex: '#ff0033',
+          contrastHex: '#880011',
+          name: 'VALKYRIE // SYNDICATE HIGH INFILTRATOR',
+          emitterGlow: 'shadow-[0_0_20px_rgba(255,0,51,0.5)]',
+        };
+      case 'cyra':
+        return {
+          glow: 'rgba(224, 17, 95, 0.5)',
+          hex: '#e0115f',
+          contrastHex: '#770022',
+          name: 'CYRA // ROGUE AI STRATEGIST',
+          emitterGlow: 'shadow-[0_0_20px_rgba(224,17,95,0.5)]',
+        };
+      case 'lyra':
+        return {
+          glow: 'rgba(0, 255, 136, 0.4)',
+          hex: '#00ff88',
+          contrastHex: '#006633',
+          name: 'LYRA // INTELLIGENCE ANALYST',
+          emitterGlow: 'shadow-[0_0_20px_rgba(0,255,136,0.4)]',
+        };
+      case 'solene':
+        return {
+          glow: 'rgba(255, 183, 0, 0.4)',
+          hex: '#ffb700',
+          contrastHex: '#885500',
+          name: 'SOLENE // RESISTANCE LIAISON',
+          emitterGlow: 'shadow-[0_0_20px_rgba(255,183,0,0.4)]',
+        };
+      case 'vance':
+        return {
+          glow: 'rgba(0, 102, 255, 0.4)',
+          hex: '#0066ff',
+          contrastHex: '#002288',
+          name: 'VANCE // FIELD SECURITY LEAD',
+          emitterGlow: 'shadow-[0_0_20px_rgba(0,102,255,0.4)]',
         };
       default:
         return {

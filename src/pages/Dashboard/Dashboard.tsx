@@ -12,6 +12,7 @@ import { useAudioStore } from '../../store/audioStore';
 import { TapeDecryptor as _TapeDecryptor } from '../../components/Dialogue/TapeDecryptor';
 import { ConspiracyBoard } from '../../components/Conspiracy/ConspiracyBoard';
 import { SectorMap as _SectorMap } from '../../components/Map/SectorMap';
+import { HologramCanvas3D } from '../../components/3D/HologramCanvas3D';
 
 const LESSON_CINEMATIC_SCRIPTS: Record<string, DialogueNode[]> = {
   B01: [
@@ -1366,6 +1367,15 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background text-primary flex flex-row font-mono relative overflow-hidden select-none scanlines">
       
+      {/* 3D WebGL Canvas Layer (React Three Fiber) */}
+      {bootPhase === 'completed' && (
+        <HologramCanvas3D 
+          speaker={(activeSpeaker as any) || 'aurelia'}
+          expression={activeExpression || 'neutral'}
+          isTyping={isTextTyping}
+        />
+      )}
+
       {/* Compact Cyber-OS Sidebar Rail */}
       {bootPhase === 'completed' && (
         <aside className="w-16 md:w-20 bg-surface/95 border-r border-primary/20 flex flex-col items-center justify-between py-6 shrink-0 z-40 select-none shadow-[5px_0_15px_rgba(0,0,0,0.4)]">
