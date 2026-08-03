@@ -5,6 +5,7 @@ import '@xterm/xterm/css/xterm.css';
 import { useAuth } from '../../context/AuthContext';
 import { type Lesson, executeTerminalCommand } from '../../services/curriculumService';
 import { useAudioStore } from '../../store/audioStore';
+import { useCinematicStore } from '../../store/cinematicStore';
 
 interface TerminalProps {
   activeLesson: Lesson | null;
@@ -243,6 +244,20 @@ const Terminal: React.FC<TerminalProps> = ({ activeLesson, onSuccess, onCommand,
     if (onCommand) onCommand(cmdStr);
 
     const cmdLower = cmdStr.toLowerCase().trim();
+
+    // Trigger dynamic live story interruption during hacking attempts
+    if (cmdLower.includes('override') || cmdLower.includes('firewall') || cmdLower.includes('connect')) {
+      try {
+        const { triggerInterruption } = useCinematicStore.getState();
+        triggerInterruption(
+          cmdLower.includes('override') ? 'kaelen' : 'hesper',
+          cmdLower.includes('override')
+            ? "Or what? You think overriding ports will restore Sector Zero? The Void lattice is already listening."
+            : "Fragment... power to Sector Zero just died. Something hit the grid... and whatever it was, it wasn't an accident.",
+          cmdLower.includes('override') ? 'glitch' : 'worried'
+        );
+      } catch (e) {}
+    }
 
     // Local loopback UI scanning simulation for the reboot phase
     if (cmdLower === 'nmap 127.0.0.1' && !lesson) {

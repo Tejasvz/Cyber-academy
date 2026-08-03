@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useDialogueStore, type DialogueNode } from '../../store/dialogueStore';
+import { useAudioStore } from '../../store/audioStore';
 
 interface DialogueFeedProps {
   activeLesson: any;
@@ -15,6 +16,14 @@ export const DialogueFeed: React.FC<DialogueFeedProps> = ({ activeLesson }) => {
     addMessage,
     setIsTextTyping
   } = useDialogueStore();
+
+  // Dynamic Audio Ducking during active dialogue sequences
+  useEffect(() => {
+    try {
+      const { setAudioDucking } = useAudioStore.getState();
+      setAudioDucking(isSequencePlaying);
+    } catch (e) {}
+  }, [isSequencePlaying]);
 
   const [displayedText, setDisplayedText] = useState('');
   const activeNodeRef = useRef<DialogueNode | null>(null);
@@ -58,22 +67,10 @@ export const DialogueFeed: React.FC<DialogueFeedProps> = ({ activeLesson }) => {
     let currentCharIndex = 0;
     let accumulatedText = '';
 
-    // Simple audio click beep for dialog typing
-    let audioCtx: AudioContext | null = null;
     const playTick = () => {
       try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.005, audioCtx.currentTime); // Subtle beep volume
-        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.05);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.05);
+        const { playVoiceClick } = useAudioStore.getState();
+        playVoiceClick(currentNode.speaker);
       } catch (e) {}
     };
 

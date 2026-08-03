@@ -24,6 +24,8 @@ interface AudioStore {
   stopStaticNoise: () => void;
   playBreathing: () => void;
   stopBreathing: () => void;
+  playVoiceClick: (speaker?: string) => void;
+  setAudioDucking: (isDucked: boolean) => void;
   threatLevel: 'exploration' | 'tension' | 'combat';
   setThreatLevel: (level: 'exploration' | 'tension' | 'combat') => void;
 }
@@ -343,6 +345,39 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       clearInterval(breathInterval);
       breathInterval = null;
     }
+  },
+
+  playVoiceClick: (speaker = 'aurelia') => {
+    const ctx = get().audioCtx;
+    const filter = get().filterNode;
+    if (!ctx || ctx.state === 'suspended' || !filter) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    let baseFreq = 1200;
+    if (speaker === 'hesper' || speaker === 'vance') baseFreq = 680;
+    else if (speaker === 'kaelen' || speaker === 'valkyrie' || speaker === 'cyra') baseFreq = 1550;
+    else if (speaker === 'lyra' || speaker === 'solene') baseFreq = 980;
+
+    osc.type = (speaker === 'kaelen' || speaker === 'valkyrie') ? 'sawtooth' : 'sine';
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, now + 0.03);
+
+    gain.gain.setValueAtTime(0.05, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+    osc.connect(gain);
+    gain.connect(filter);
+
+    osc.start(now);
+    osc.stop(now + 0.035);
+  },
+
+  setAudioDucking: (isDucked) => {
+    const targetFreq = isDucked ? 320 : 800;
+    get().setFilterFrequency(targetFreq, isDucked ? 0.2 : 0.5);
   },
 
   setThreatLevel: (level) => {
