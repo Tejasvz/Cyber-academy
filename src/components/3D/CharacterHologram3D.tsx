@@ -62,13 +62,17 @@ const HologramShader = {
       // Fresnel Rim Light calculation
       float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), uFresnelPower);
 
+      // Dual-tone color blend matching reference: Front cyan (#00f0ff), Rim magenta (#d946ef)
+      vec3 rimColor = vec3(0.85, 0.27, 0.94);
+      vec3 baseColor = mix(uColor, rimColor, fresnel * 0.75);
+
       // Scanline effect moving along Y axis
-      float scanline = sin(vPosition.y * 38.0 - uTime * 7.0) * 0.5 + 0.5;
+      float scanline = sin(vPosition.y * 36.0 - uTime * 6.0) * 0.5 + 0.5;
       scanline = pow(scanline, 1.2);
 
       // Combine base color with scanlines and fresnel edge brightness
-      vec3 finalColor = uColor + vec3(fresnel * 0.8);
-      float alpha = (fresnel * 0.75 + scanline * 0.25 + 0.15);
+      vec3 finalColor = baseColor + vec3(fresnel * 0.6);
+      float alpha = (fresnel * 0.85 + scanline * 0.25 + 0.22);
 
       if (uGlitch > 0.1) {
         alpha *= (0.7 + sin(uTime * 30.0) * 0.3);

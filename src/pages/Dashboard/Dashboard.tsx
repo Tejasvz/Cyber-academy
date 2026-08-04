@@ -13,6 +13,7 @@ import { TapeDecryptor as _TapeDecryptor } from '../../components/Dialogue/TapeD
 import { ConspiracyBoard } from '../../components/Conspiracy/ConspiracyBoard';
 import { SectorMap as _SectorMap } from '../../components/Map/SectorMap';
 import { HologramCanvas3D } from '../../components/3D/HologramCanvas3D';
+import { GlassPanel } from '../../components/UI/GlassPanel';
 
 const LESSON_CINEMATIC_SCRIPTS: Record<string, DialogueNode[]> = {
   B01: [
@@ -236,9 +237,7 @@ const Dashboard = () => {
     activeSpeaker,
     activeExpression,
     activeCoSpeaker,
-    activeCoExpression,
-    isTextTyping,
-    messageHistory
+    isTextTyping
   } = useDialogueStore();
   const {
     initializeAudio,
@@ -257,14 +256,12 @@ const Dashboard = () => {
   const [bootstrapError, setBootstrapError] = useState('');
   const [isAudioReady, setIsAudioReady] = useState(false);
   const [timeStr, setTimeStr] = useState('');
-  const [leftPanelMode, setLeftPanelMode] = useState<'terminal' | 'missions'>('missions');
+  const [leftPanelMode, setLeftPanelMode] = useState<'console' | 'terminal' | 'missions'>('terminal');
   const [rightPanelMode, setRightPanelMode] = useState<'status' | 'intel' | 'upgrades' | 'config'>('status');
 
   useEffect(() => {
     if (activeLesson) {
       setLeftPanelMode('terminal');
-    } else {
-      setLeftPanelMode('missions');
     }
   }, [activeLesson]);
 
@@ -285,7 +282,7 @@ const Dashboard = () => {
   useEffect(() => {
     const updateTime = () => {
       const d = new Date();
-      setTimeStr(d.toLocaleTimeString());
+      setTimeStr(d.toISOString().substring(11, 19) + ' UTC');
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -1376,93 +1373,6 @@ const Dashboard = () => {
         />
       )}
 
-      {/* Compact Cyber-OS Sidebar Rail */}
-      {bootPhase === 'completed' && (
-        <aside className="w-16 md:w-20 bg-surface/95 border-r border-primary/20 flex flex-col items-center justify-between py-6 shrink-0 z-40 select-none shadow-[5px_0_15px_rgba(0,0,0,0.4)]">
-          <div className="flex flex-col items-center gap-6 w-full">
-            {/* Main Logo icon - Opens world map */}
-            <div 
-              className="w-10 h-10 rounded-lg bg-primary/10 border border-primary flex items-center justify-center font-bold text-shadow-neon text-primary animate-pulse select-none cursor-pointer hover:bg-primary/20 transition-colors" 
-              title="Cyber Academy OS" 
-              onClick={() => { playUiClick(); openWindow('world_map'); }}
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-
-            <div className="w-8 h-[1px] bg-primary/20"></div>
-
-            {/* Navigation Toggles */}
-            <button
-              onClick={() => { playUiClick(); openWindow('world_map'); }}
-              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-textMuted"
-            >
-              <span className="text-base">🗺️</span>
-              <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Map</span>
-              <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
-                Lattice Sector Map
-              </span>
-            </button>
-
-            <button
-              onClick={() => { playUiClick(); openWindow('curriculum'); }}
-              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-textMuted"
-            >
-              <span className="text-base">🛰️</span>
-              <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Missions</span>
-              <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
-                Mission Control
-              </span>
-            </button>
-
-            <button
-              onClick={() => { playUiClick(); openWindow('conspiracy'); }}
-              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-textMuted"
-            >
-              <span className="text-base">🕸️</span>
-              <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Intel</span>
-              <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
-                Conspiracy Board
-              </span>
-            </button>
-
-            {activeLesson && (
-              <button
-                onClick={() => {
-                  playUiClick();
-                  openWindow('terminal');
-                  openWindow('lesson');
-                  openWindow('ai_assistant');
-                }}
-                className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-secondary animate-pulse"
-              >
-                <span className="text-base">⚡</span>
-                <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Sandbox</span>
-                <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
-                  Active Sandbox
-                </span>
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-col items-center gap-4 w-full">
-            <div className="w-8 h-[1px] bg-primary/20"></div>
-            
-            <button
-              onClick={() => { playUiClick(); setShowOnboarding(true); }}
-              className="w-10 h-10 rounded-full bg-primary/5 hover:bg-primary/15 border border-primary/20 hover:border-primary flex items-center justify-center text-primary text-xs transition-all group relative"
-              title="Guidebook"
-            >
-              <span>📖</span>
-              <span className="absolute left-12 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
-                Onboarding Briefing
-              </span>
-            </button>
-          </div>
-        </aside>
-      )}
-
       {/* Main Display Area (Right side) */}
       <div className="flex-grow flex flex-col h-screen overflow-hidden relative">
         
@@ -1572,120 +1482,79 @@ const Dashboard = () => {
         </AnimatePresence>
 
         {bootPhase === 'completed' && (
-          <header className={`h-16 bg-[#07070c]/90 border-b border-primary/20 flex items-center justify-between px-8 z-40 select-none shrink-0 shadow-neon transition-opacity duration-700 ${isSequencePlaying ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
+          <header className={`h-14 bg-[#04060e]/85 backdrop-blur-xl border-b border-[#00f0ff]/20 flex items-center justify-between px-8 z-40 select-none shrink-0 transition-opacity duration-700 ${isSequencePlaying ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 flex items-center justify-center border border-primary/30 rounded-lg bg-primary/5 mr-2">
-                <svg className="w-5 h-5 text-primary animate-pulse" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="6">
+              <div className="w-7 h-7 flex items-center justify-center border border-[#00f0ff]/40 rounded-lg bg-[#00f0ff]/10 mr-1 shadow-[0_0_12px_rgba(0,240,255,0.3)]">
+                <svg className="w-4 h-4 text-[#00f0ff] animate-pulse" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="6">
                   <polygon points="50,15 85,75 15,75" />
                   <circle cx="50" cy="55" r="10" />
                 </svg>
               </div>
               <div>
-                <h1 className="text-sm font-bold text-shadow-neon text-primary tracking-widest uppercase flex items-center gap-2">
+                <h1 className="text-xs font-bold text-shadow-neon text-[#00f0ff] tracking-widest uppercase flex items-center gap-2">
                   PROJECT VEIL
                 </h1>
-                <div className="text-[8px] text-textMuted font-bold uppercase tracking-widest">
+                <div className="text-[7.5px] text-textMuted font-bold uppercase tracking-widest">
                   AETHER PROTOCOL INTERFACE
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => { playUiClick(); toggleMute(); }}
-                  className={`border px-2.5 py-1 rounded transition-all text-[8px] uppercase font-bold tracking-wider cursor-pointer ${
-                    isMuted 
-                      ? 'border-error/40 text-error hover:bg-error/10' 
-                      : 'border-primary/30 text-primary hover:bg-primary/10'
-                  }`}
-                >
-                  {isMuted ? '🔇 Audio Muted' : '🔊 Audio On'}
-                </button>
-                
-                <button
-                  onClick={() => setShowOnboarding(true)}
-                  className="border border-primary/30 text-primary hover:bg-primary hover:text-background px-2.5 py-1 rounded transition-all text-[8px] uppercase font-bold tracking-wider cursor-pointer"
-                >
-                  Guidebook
-                </button>
+            <div className="text-right font-mono text-[9px] flex items-center gap-4">
+              <div className="space-y-0.5">
+                <div className="text-textMuted uppercase">OPERATOR: <span className="text-[#00f0ff] font-bold">{user?.username || 'FRAGMENT'}</span></div>
+                <div className="text-textMuted uppercase">CLEARANCE: <span className="text-[#d946ef] font-bold">LEVEL_{user?.level || 1} ({user?.level && user.level > 2 ? 'SPECIALIST' : 'NOVICE'})</span></div>
+                <div className="text-textMuted uppercase">TRUST LEVEL: <span className="text-[#00f0ff] font-bold">{Math.min(100, Math.round(((user?.xp || 0) % 500) / 5))}%</span></div>
               </div>
-
-              <div className="text-right font-mono text-[9px] border-l border-primary/10 pl-6 flex items-center gap-4">
-                <div className="space-y-0.5">
-                  <div className="text-textMuted uppercase">Operator: <span className="text-primary font-bold">{user?.username || 'FRAGMENT'}</span></div>
-                  <div className="text-textMuted uppercase">Clearance: <span className="text-secondary font-bold">LEVEL_{user?.level || 1} ({user?.level && user.level > 2 ? 'Specialist' : 'Novice'})</span></div>
-                  <div className="text-textMuted uppercase">Trust Level: <span className="text-primary font-bold">{Math.min(100, Math.round(((user?.xp || 0) % 500) / 5))}%</span></div>
-                </div>
-                <div className="w-7 h-7 rounded border border-primary/20 bg-primary/5 flex items-center justify-center text-[10px]">
-                  👤
-                </div>
+              <div className="w-7 h-7 rounded border border-[#00f0ff]/30 bg-[#00f0ff]/10 flex items-center justify-center text-[10px] shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+                👤
               </div>
             </div>
           </header>
         )}
 
         {bootPhase === 'completed' ? (
-          <main className="flex-grow w-full relative overflow-hidden bg-[#040406] select-text flex flex-row p-4 gap-4">
+          <main className="flex-grow w-full relative overflow-hidden bg-transparent select-text flex flex-row p-4 gap-4">
             
-            <div className={`w-[27%] min-w-[340px] max-w-[400px] flex flex-col gap-4 transition-all duration-700 ease-in-out ${isSequencePlaying ? 'opacity-15 scale-95 blur-[1.5px] pointer-events-none' : 'opacity-100 scale-100'}`}>
+            {/* Left Column Stack */}
+            <div className={`w-[28%] min-w-[340px] max-w-[400px] flex flex-col gap-4 transition-all duration-700 ease-in-out ${isSequencePlaying ? 'opacity-15 scale-95 blur-[1.5px] pointer-events-none' : 'opacity-100 scale-100'}`}>
               
               {leftPanelMode === 'missions' ? (
-                <div className="flex-grow bg-[#07070c]/80 border border-primary/20 rounded-lg p-4 flex flex-col overflow-hidden backdrop-blur-md shadow-inner relative z-10">
+                <GlassPanel className="flex-grow p-4 flex flex-col overflow-hidden relative z-10">
                   {renderCurriculumWindowContent()}
-                </div>
+                </GlassPanel>
               ) : (
                 <>
-                  {activeLesson ? (
-                    <div className="bg-[#07070a]/90 border border-primary/20 rounded-lg p-4 flex flex-col gap-3 font-mono shrink-0 shadow-inner">
-                      <div className="flex justify-between items-center border-b border-primary/20 pb-2">
-                        <span className="text-[10px] font-bold text-primary tracking-widest uppercase">// ACTIVE OPERATION</span>
-                        <span className="text-[8.5px] text-secondary font-bold px-1.5 py-0.5 rounded border border-secondary/20 bg-secondary/5">{activeLesson.id}</span>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <h4 className="text-xs font-bold text-textMain uppercase">{activeLesson.title}</h4>
-                        <p className="text-[8.5px] text-textMuted uppercase tracking-wider">{activeLesson.technique}</p>
-                      </div>
-
-                      <div className="text-[9px] text-textMuted leading-relaxed border-t border-primary/10 pt-2 h-20 overflow-y-auto pr-1 scrollbar">
-                        {activeLesson.theory}
-                      </div>
-
-                      <div className="border-t border-primary/10 pt-2">
-                        <div className="text-[8.5px] font-bold text-primary tracking-wider uppercase mb-1.5">OBJECTIVES:</div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-[9px] text-textMain font-mono">
-                            <span className="text-success font-bold">✓</span>
-                            <span className="text-textMuted">Calibrated Synaptic Connection</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[9px] text-textMain font-mono">
-                            <span className={completedLessons.has(activeLesson.id) ? 'text-success font-bold' : 'text-primary font-bold animate-pulse'}>
-                              {completedLessons.has(activeLesson.id) ? '✓' : '[]'}
-                            </span>
-                            <span className={completedLessons.has(activeLesson.id) ? 'text-textMuted line-through' : 'text-textMain'}>
-                              Harvest Substation Flag
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                  {/* Active Mission Panel */}
+                  <GlassPanel className="p-4 flex flex-col gap-2.5 font-mono shrink-0">
+                    <div className="flex justify-between items-center border-b border-[#00f0ff]/20 pb-2">
+                      <span className="text-[10px] font-bold text-[#00f0ff] tracking-widest uppercase flex items-center gap-1.5">
+                        <span className="text-[#00f0ff]">⬢</span> ACTIVE MISSION
+                      </span>
+                      <span className="text-textMuted text-[10px] font-mono cursor-pointer hover:text-white">— ✖</span>
                     </div>
-                  ) : (
-                    <div className="bg-[#07070a]/90 border border-primary/20 rounded-lg p-4 flex flex-col justify-center items-center text-center font-mono h-48 shrink-0">
-                      <span className="text-primary text-base mb-2 animate-bounce">🛰️</span>
-                      <p className="text-[9px] text-textMuted uppercase tracking-widest leading-relaxed">
-                        No active target loaded.<br />Select a node on the Missions board to deploy.
+                    
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-bold text-[#00f0ff] uppercase">{activeLesson ? activeLesson.title : 'OPERATION BLACK ECHO'}</h4>
+                      <p className="text-[9px] text-textMuted uppercase tracking-wider">{activeLesson ? activeLesson.technique : 'INVESTIGATE POWER FAILURE IN SECTOR ZERO'}</p>
+                    </div>
+
+                    <div className="border-t border-[#00f0ff]/10 pt-2 space-y-1">
+                      <div className="text-[9px] font-bold text-[#00f0ff] tracking-widest uppercase">OBJECTIVE</div>
+                      <p className="text-[9.5px] text-textMain leading-relaxed font-mono">
+                        {activeLesson ? activeLesson.theory.substring(0, 110) + '...' : 'Override the substation firewall and restore power.'}
                       </p>
                     </div>
-                  )}
+                  </GlassPanel>
 
-                  <div className="flex-grow bg-[#07070a]/90 border border-primary/20 rounded-lg overflow-hidden relative shadow-inner flex flex-col">
-                    <div className="h-8 bg-[#09090f] border-b border-primary/15 flex items-center justify-between px-3 select-none shrink-0">
+                  {/* Terminal Panel */}
+                  <GlassPanel className="flex-grow overflow-hidden relative flex flex-col min-h-[320px]">
+                    <div className="h-8 border-b border-[#00f0ff]/20 flex items-center justify-between px-3 select-none shrink-0">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-success"></span>
-                        <span className="text-[8px] font-bold text-textMuted tracking-wider uppercase">TERMINAL SHIELD SHELL</span>
+                        <span className="text-xs text-[#00f0ff]">✖</span>
+                        <span className="text-[9px] font-bold text-textMuted tracking-wider uppercase">TERMINAL</span>
                       </div>
-                      <span className="text-[8px] text-primary/40 font-bold uppercase">PORTAL_v2.0</span>
+                      <span className="text-[9px] text-[#00f0ff]/50 font-bold uppercase">---</span>
                     </div>
                     
                     <div className="flex-grow min-h-0 relative">
@@ -1705,70 +1574,53 @@ const Dashboard = () => {
                         }}
                       />
                     </div>
-                  </div>
+                  </GlassPanel>
                 </>
               )}
             </div>
 
+            {/* Center Viewport & Subtitles */}
             <div className={`flex-grow flex flex-col justify-between items-center transition-all duration-700 ease-in-out px-4 py-2 relative z-20 ${isSequencePlaying ? 'scale-105 translate-y-3' : 'scale-100'}`}>
               
-              <div className="w-full flex justify-between items-center text-[7.5px] font-mono text-primary/40 select-none tracking-widest uppercase border-b border-primary/5 pb-2 shrink-0">
+              <div className="w-full flex justify-between items-center text-[8px] font-mono text-[#00f0ff]/60 select-none tracking-widest uppercase border-b border-[#00f0ff]/10 pb-2 shrink-0">
                 <span>COORD LATTICE: LINKED</span>
                 <span>SEC_ZERO_POD // v2.6</span>
                 <span>FREQUENCY REFRACTION: 98.2%</span>
               </div>
 
-              <div className="flex-grow w-full flex items-center justify-center relative overflow-visible min-h-[300px]">
-                
-                <div className="relative w-64 h-64 flex items-center justify-center overflow-visible">
-                  
-                  <div className="w-56 h-56 transition-all duration-500 ease-out z-10 relative">
-                    <CharacterPortrait 
-                      speaker={(activeSpeaker as any) || 'aurelia'} 
-                      expression={activeExpression || 'neutral'} 
-                      isTyping={isTextTyping} 
-                    />
+              <div className="flex-grow w-full flex items-center justify-center relative overflow-visible min-h-[300px] pointer-events-none">
+                {/* 3D WebGL Hologram is rendered by R3F canvas layer directly in this center viewport area */}
+                {activeCoSpeaker && (
+                  <div className="absolute top-4 right-4 bg-[#05060b]/80 border border-secondary/40 px-3 py-1.5 rounded text-[9px] font-mono text-secondary animate-pulse backdrop-blur-md">
+                    // CO-SPEAKER SIGNAL DETECTED: {activeCoSpeaker.toUpperCase()}
                   </div>
-
-                  {activeCoSpeaker && (
-                    <div className="w-40 h-40 absolute -right-16 top-6 opacity-35 blur-[0.6px] scale-90 z-0 pointer-events-none transition-all duration-500 animate-[flicker_0.12s_infinite]">
-                      <CharacterPortrait 
-                        speaker={activeCoSpeaker as any} 
-                        expression={activeCoExpression || 'neutral'} 
-                        isTyping={false} 
-                      />
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
 
+              {/* Subtitles Box */}
               <div className="w-full max-w-xl shrink-0 mt-4">
                 <DialogueFeed activeLesson={activeLesson} />
               </div>
             </div>
 
-            <div className={`w-[27%] min-w-[340px] max-w-[400px] flex flex-col gap-4 transition-all duration-700 ease-in-out ${isSequencePlaying ? 'opacity-15 scale-95 blur-[1.5px] pointer-events-none' : 'opacity-100 scale-100'}`}>
+            {/* Right Column Stack */}
+            <div className={`w-[28%] min-w-[340px] max-w-[400px] flex flex-col gap-4 transition-all duration-700 ease-in-out ${isSequencePlaying ? 'opacity-15 scale-95 blur-[1.5px] pointer-events-none' : 'opacity-100 scale-100'}`}>
               
               {rightPanelMode === 'intel' ? (
-                <div className="flex-grow bg-[#07070c]/80 border border-primary/20 rounded-lg p-0 flex flex-col overflow-hidden backdrop-blur-md shadow-inner relative z-10">
-                  <div className="h-8 bg-[#09090f] border-b border-primary/15 flex items-center justify-between px-3 select-none shrink-0">
-                    <span className="text-[8px] font-bold text-primary tracking-wider">🕸️ CONSPIRACY BOARD LOGS</span>
-                    <button 
-                      onClick={() => setRightPanelMode('status')} 
-                      className="text-textMuted hover:text-primary text-[8px] font-bold uppercase transition-colors"
-                    >
-                      [ Close ]
-                    </button>
+                <GlassPanel className="flex-grow p-0 flex flex-col overflow-hidden relative z-10">
+                  <div className="h-8 border-b border-[#00f0ff]/20 flex items-center justify-between px-3 select-none shrink-0">
+                    <span className="text-[9px] font-bold text-[#00f0ff] tracking-wider uppercase">❖ CONSPIRACY BOARD LOGS</span>
+                    <button onClick={() => setRightPanelMode('status')} className="text-textMuted hover:text-[#00f0ff] text-[9px] font-bold uppercase">[ Close ]</button>
                   </div>
                   <div className="flex-grow overflow-hidden relative">
                     <ConspiracyBoard completedLessons={completedLessons} />
                   </div>
-                </div>
+                </GlassPanel>
               ) : rightPanelMode === 'upgrades' ? (
-                <div className="flex-grow bg-[#07070c]/80 border border-primary/20 rounded-lg p-4 flex flex-col overflow-hidden backdrop-blur-md shadow-inner relative z-10 font-mono text-xs text-textMain space-y-4">
-                  <div className="flex justify-between items-center border-b border-primary/25 pb-2">
-                    <span className="text-[9px] font-bold text-primary uppercase tracking-widest">🎖️ OPERATOR COMMAND CHECKS</span>
-                    <button onClick={() => setRightPanelMode('status')} className="text-textMuted hover:text-primary text-[8px] font-bold">[ Close ]</button>
+                <GlassPanel className="flex-grow p-4 flex flex-col overflow-hidden relative z-10 font-mono text-xs text-textMain space-y-4">
+                  <div className="flex justify-between items-center border-b border-[#00f0ff]/20 pb-2">
+                    <span className="text-[9px] font-bold text-[#00f0ff] uppercase tracking-widest">🎖️ OPERATOR COMMAND CHECKS</span>
+                    <button onClick={() => setRightPanelMode('status')} className="text-textMuted hover:text-[#00f0ff] text-[8px] font-bold">[ Close ]</button>
                   </div>
                   
                   <div className="flex-grow overflow-y-auto space-y-3 pr-1 scrollbar">
@@ -1776,7 +1628,7 @@ const Dashboard = () => {
                     {badges.length > 0 ? (
                       <div className="grid grid-cols-1 gap-2">
                         {badges.map((b, i) => (
-                          <div key={i} className="border border-primary/20 bg-primary/5 p-2 rounded flex justify-between items-center">
+                          <div key={i} className="border border-[#00f0ff]/20 bg-[#00f0ff]/5 p-2 rounded flex justify-between items-center">
                             <span>🎖️ {b}</span>
                             <span className="text-[8px] text-success font-bold">CLEAR</span>
                           </div>
@@ -1786,12 +1638,12 @@ const Dashboard = () => {
                       <div className="italic text-textMuted text-[9px] py-4 text-center">No commendations secured on the active lattice yet. Complete Act modules to level up.</div>
                     )}
                   </div>
-                </div>
+                </GlassPanel>
               ) : rightPanelMode === 'config' ? (
-                <div className="flex-grow bg-[#07070c]/80 border border-primary/20 rounded-lg p-4 flex flex-col overflow-hidden backdrop-blur-md shadow-inner relative z-10 font-mono text-xs text-textMain space-y-4">
-                  <div className="flex justify-between items-center border-b border-primary/25 pb-2">
-                    <span className="text-[9px] font-bold text-primary uppercase tracking-widest">⚙️ HUD CONFIGURATION</span>
-                    <button onClick={() => setRightPanelMode('status')} className="text-textMuted hover:text-primary text-[8px] font-bold">[ Close ]</button>
+                <GlassPanel className="flex-grow p-4 flex flex-col overflow-hidden relative z-10 font-mono text-xs text-textMain space-y-4">
+                  <div className="flex justify-between items-center border-b border-[#00f0ff]/20 pb-2">
+                    <span className="text-[9px] font-bold text-[#00f0ff] uppercase tracking-widest">⚙️ HUD CONFIGURATION</span>
+                    <button onClick={() => setRightPanelMode('status')} className="text-textMuted hover:text-[#00f0ff] text-[8px] font-bold">[ Close ]</button>
                   </div>
                   
                   <div className="space-y-4 flex-grow">
@@ -1804,8 +1656,8 @@ const Dashboard = () => {
                             onClick={() => setCurrentTheme(t as any)}
                             className={`py-1 text-[8.5px] uppercase font-bold border rounded transition-all ${
                               currentTheme === t
-                                ? 'bg-primary/20 border-primary text-primary shadow-[0_0_8px_rgba(0,240,255,0.15)]'
-                                : 'bg-[#171721]/30 border-primary/10 text-textMuted hover:border-primary/30'
+                                ? 'bg-[#00f0ff]/20 border-[#00f0ff] text-[#00f0ff] shadow-[0_0_8px_rgba(0,240,255,0.15)]'
+                                : 'bg-[#171721]/30 border-[#00f0ff]/10 text-textMuted hover:border-[#00f0ff]/30'
                             }`}
                           >
                             {t}
@@ -1814,19 +1666,19 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-1.5 pt-2 border-t border-primary/10">
+                    <div className="space-y-1.5 pt-2 border-t border-[#00f0ff]/10">
                       <span className="text-[8.5px] text-textMuted uppercase font-bold">OS Sound System:</span>
                       <button 
                         onClick={() => { playUiClick(); toggleMute(); }}
                         className={`w-full py-1.5 rounded border transition-all text-[9px] uppercase font-bold ${
-                          isMuted ? 'border-error/40 text-error bg-error/5' : 'border-primary/30 text-primary bg-primary/5 shadow-neon'
+                          isMuted ? 'border-error/40 text-error bg-error/5' : 'border-[#00f0ff]/30 text-[#00f0ff] bg-[#00f0ff]/5 shadow-neon'
                         }`}
                       >
                         {isMuted ? '🔇 Audio Status: Offline' : '🔊 Audio Status: Online'}
                       </button>
                     </div>
 
-                    <div className="space-y-1.5 pt-2 border-t border-primary/10">
+                    <div className="space-y-1.5 pt-2 border-t border-[#00f0ff]/10">
                       <span className="text-[8.5px] text-textMuted uppercase font-bold">Link Calibration Utility:</span>
                       <button
                         onClick={() => {
@@ -1849,72 +1701,85 @@ const Dashboard = () => {
                       </button>
                     </div>
                   </div>
-                </div>
+                </GlassPanel>
               ) : (
                 <>
-                  <div className="bg-[#07070a]/90 border border-primary/20 rounded-lg p-4 flex flex-col overflow-hidden relative shadow-inner flex-grow">
-                    <div className="flex justify-between items-center border-b border-primary/20 pb-2 mb-2 select-none">
-                      <span className="text-[10px] font-bold text-primary tracking-widest uppercase">// AETHER COMM FEED</span>
-                      <span className="text-[7.5px] text-success font-bold uppercase tracking-widest">LIVE CONNECTION</span>
+                  {/* Aether Comm Feed Panel */}
+                  <GlassPanel className="p-4 flex flex-col overflow-hidden relative flex-grow min-h-[220px]">
+                    <div className="flex justify-between items-center border-b border-[#00f0ff]/20 pb-2 mb-2 select-none">
+                      <span className="text-[10px] font-bold text-[#00f0ff] tracking-widest uppercase flex items-center gap-1.5">
+                        <span className="text-[#00f0ff]">❖</span> AETHER COMM FEED
+                      </span>
+                      <span className="text-textMuted text-[10px] font-mono cursor-pointer hover:text-white">✖</span>
                     </div>
 
-                    <div className="flex-grow overflow-y-auto space-y-3 pr-1 scrollbar flex flex-col-reverse">
-                      <div className="flex flex-col gap-2">
-                        {messageHistory.slice(-10).map((msg, i) => (
-                          <div key={i} className="text-[9.5px] font-mono leading-relaxed space-y-0.5 border-b border-primary/5 pb-2">
-                            <div className="flex justify-between text-[8px] select-none opacity-50">
-                              <span className="font-bold uppercase tracking-wider text-secondary">
-                                // {msg.sender.toUpperCase()}
-                              </span>
-                              <span>{msg.timestamp}</span>
-                            </div>
-                            <p className="text-textMain whitespace-pre-wrap select-text pr-1">{msg.text}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#07070a]/90 border border-primary/20 rounded-lg p-4 flex flex-col gap-3 font-mono shrink-0 shadow-inner">
-                    <div className="flex justify-between items-center border-b border-primary/20 pb-2 select-none">
-                      <span className="text-[10px] font-bold text-primary tracking-widest uppercase">// SYSTEM STATUS</span>
-                      <span className="text-[8px] text-secondary font-bold uppercase">REF_SHIELD_OS</span>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[8px] uppercase tracking-wider text-textMuted font-bold">
-                          <span>Veil Coherence Integrity</span>
-                          <span className="text-primary">
-                            {Math.round((completedLessons.size / (curriculum?.tiers.reduce((acc, t) => acc + t.modules.length, 0) || 1)) * 100)}%
-                          </span>
+                    <div className="flex-grow overflow-y-auto space-y-3 pr-1 scrollbar flex flex-col">
+                      <div className="flex items-start gap-2.5 text-[10px] font-mono leading-relaxed border-b border-[#00f0ff]/10 pb-2.5">
+                        <div className="w-7 h-7 rounded-lg border border-[#00f0ff]/40 bg-[#00f0ff]/10 flex items-center justify-center text-[10px] shrink-0 text-[#00f0ff] shadow-[0_0_8px_rgba(0,240,255,0.2)]">
+                          👤
                         </div>
-                        <div className="h-2 bg-background border border-primary/25 rounded overflow-hidden shadow-inner">
-                          <div 
-                            className="h-full bg-[#00f0ff] shadow-[0_0_8px_#00f0ff] transition-all duration-700" 
-                            style={{ width: `${(completedLessons.size / (curriculum?.tiers.reduce((acc, t) => acc + t.modules.length, 0) || 1)) * 100}%` }}
-                          />
+                        <div className="space-y-0.5">
+                          <div className="text-[#00f0ff] font-bold uppercase tracking-wider">// HESPER</div>
+                          <div className="text-textMain text-[9.5px]">We're seeing cascading failures. Stay sharp.</div>
                         </div>
                       </div>
 
-                      <div className="flex justify-between items-center border-t border-primary/10 pt-2 text-[9px] uppercase tracking-wider text-textMuted select-none">
-                        <span>Lattice Threat Sweep</span>
-                        <span className={`font-bold animate-pulse text-shadow-neon ${activeLesson && ['B08', 'M08', 'A07'].includes(activeLesson.id) ? 'text-error' : activeLesson ? 'text-secondary' : 'text-success'}`}>
-                          {activeLesson && ['B08', 'M08', 'A07'].includes(activeLesson.id) ? 'CRITICAL COMBAT' : activeLesson ? 'ELEVATED TENSION' : 'STANDBY EXPLORATION'}
-                        </span>
+                      <div className="flex items-start gap-2.5 text-[10px] font-mono leading-relaxed border-b border-[#00f0ff]/10 pb-2.5">
+                        <div className="w-7 h-7 rounded-lg border border-[#d946ef]/40 bg-[#d946ef]/10 flex items-center justify-center text-[10px] shrink-0 text-[#d946ef] shadow-[0_0_8px_rgba(217,70,239,0.2)]">
+                          👤
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="text-[#d946ef] font-bold uppercase tracking-wider">// KAELEN</div>
+                          <div className="text-textMain text-[9.5px]">Or what? Another lecture from your perfect boy scout?</div>
+                        </div>
                       </div>
 
-                      <div className="space-y-1 pt-1.5 border-t border-primary/10">
-                        <div className="flex justify-between text-[8px] uppercase tracking-wider text-textMuted font-bold">
-                          <span>Refraction Stability</span>
-                          <span className="text-secondary">74%</span>
+                      <div className="flex items-start gap-2.5 text-[10px] font-mono leading-relaxed border-b border-[#00f0ff]/10 pb-2.5">
+                        <div className="w-7 h-7 rounded-lg border border-[#00f0ff]/40 bg-[#00f0ff]/10 flex items-center justify-center text-[10px] shrink-0 text-[#00f0ff] shadow-[0_0_8px_rgba(0,240,255,0.2)]">
+                          👤
                         </div>
-                        <div className="h-1.5 bg-background border border-primary/25 rounded overflow-hidden">
-                          <div className="h-full bg-secondary shadow-[0_0_6px_rgba(217,70,239,0.5)] w-[74%] animate-pulse" />
+                        <div className="space-y-0.5">
+                          <div className="text-[#00f0ff] font-bold uppercase tracking-wider">// AURELIA</div>
+                          <div className="text-textMain text-[9.5px]">Kaelen, not now. This is not the time.</div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </GlassPanel>
+
+                  {/* System Status Panel */}
+                  <GlassPanel className="p-4 flex flex-col font-mono shrink-0 space-y-3">
+                    <div className="flex justify-between items-center border-b border-[#00f0ff]/20 pb-2">
+                      <span className="text-[10px] font-bold text-textMuted tracking-widest uppercase">SYSTEM STATUS</span>
+                      <span className="text-textMuted text-[10px] font-mono cursor-pointer hover:text-white">✖</span>
+                    </div>
+
+                    <div className="space-y-3 text-[9.5px]">
+                      <div>
+                        <div className="flex justify-between text-textMuted font-bold uppercase mb-1">
+                          <span>VEIL INTEGRITY</span>
+                          <span className="text-[#00f0ff]">78%</span>
+                        </div>
+                        <div className="h-1.5 bg-[#00f0ff]/10 border border-[#00f0ff]/30 rounded relative overflow-hidden">
+                          <div className="h-full bg-[#00f0ff] w-[78%] shadow-[0_0_8px_#00f0ff]" />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center py-1 border-t border-[#00f0ff]/10">
+                        <span className="text-textMuted font-bold uppercase">THREAT LEVEL</span>
+                        <span className="text-[#ffaa00] font-bold uppercase tracking-wider">ELEVATED</span>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-textMuted font-bold uppercase mb-1">
+                          <span>NETWORK STABILITY</span>
+                          <span className="text-[#d946ef]">64%</span>
+                        </div>
+                        <div className="h-1.5 bg-[#d946ef]/10 border border-[#d946ef]/30 rounded relative overflow-hidden">
+                          <div className="h-full bg-[#d946ef] w-[64%] shadow-[0_0_8px_#d946ef]" />
+                        </div>
+                      </div>
+                    </div>
+                  </GlassPanel>
                 </>
               )}
             </div>
@@ -1930,67 +1795,64 @@ const Dashboard = () => {
         <div className={`fixed left-0 right-0 bottom-0 h-10 bg-black z-50 border-t border-primary/20 pointer-events-none transition-transform duration-700 ease-in-out ${isSequencePlaying ? 'translate-y-0' : 'translate-y-full'}`} />
 
         {bootPhase === 'completed' && (
-          <footer className={`h-12 bg-[#06060a]/95 border-t border-primary/20 flex items-center justify-between px-6 z-40 select-none shrink-0 shadow-neon transition-opacity duration-700 ${isSequencePlaying ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
-            <div className="flex items-center gap-3">
+          <>
+            {/* Floating Cyberpunk Navigation Dock Tray */}
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 p-1.5 rounded-xl bg-[#050814]/85 border border-[#00f0ff]/30 backdrop-blur-xl shadow-[0_0_30px_rgba(0,240,255,0.2)]">
               <button
-                onClick={() => { playUiClick(); setRightPanelMode(rightPanelMode === 'config' ? 'status' : 'config'); }}
-                className="flex items-center gap-2 bg-primary/10 border border-primary/30 hover:bg-primary/20 px-3 py-1.5 rounded text-[8px] font-bold text-primary uppercase tracking-widest transition-all cursor-pointer font-mono shadow-inner"
+                onClick={() => { playUiClick(); setLeftPanelMode('terminal'); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9.5px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer ${
+                  leftPanelMode === 'terminal' ? 'bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/50 shadow-[0_0_10px_rgba(0,240,255,0.3)]' : 'text-textMuted hover:text-white'
+                }`}
               >
-                <span>⚙️</span> OS Config
+                <span>💻</span> TERMINAL
               </button>
-              
-              <div className="h-4 w-[1px] bg-primary/20 mx-1"></div>
 
-              <div className="flex items-center gap-2 font-mono">
-                <button
-                  onClick={() => { playUiClick(); setLeftPanelMode('terminal'); }}
-                  className={`px-3 py-1 rounded text-[8.5px] font-bold uppercase tracking-wider transition-all border ${
-                    leftPanelMode === 'terminal'
-                      ? 'bg-primary/25 border-primary text-primary font-bold shadow-[0_0_8px_rgba(0,240,255,0.2)]'
-                      : 'bg-transparent border-primary/10 text-textMuted hover:border-primary/30 hover:text-textMain'
-                  }`}
-                >
-                  📺 Active Console
-                </button>
-                <button
-                  onClick={() => { playUiClick(); setLeftPanelMode('missions'); }}
-                  className={`px-3 py-1 rounded text-[8.5px] font-bold uppercase tracking-wider transition-all border ${
-                    leftPanelMode === 'missions'
-                      ? 'bg-primary/25 border-primary text-primary font-bold shadow-[0_0_8px_rgba(0,240,255,0.2)]'
-                      : 'bg-transparent border-primary/10 text-textMuted hover:border-primary/30 hover:text-textMain'
-                  }`}
-                >
-                  🛰️ Mission Control
-                </button>
-                <button
-                  onClick={() => { playUiClick(); setRightPanelMode(rightPanelMode === 'intel' ? 'status' : 'intel'); }}
-                  className={`px-3 py-1 rounded text-[8.5px] font-bold uppercase tracking-wider transition-all border ${
-                    rightPanelMode === 'intel'
-                      ? 'bg-secondary/25 border-secondary text-secondary font-bold shadow-[0_0_8px_rgba(217,70,239,0.2)]'
-                      : 'bg-transparent border-primary/10 text-textMuted hover:border-primary/30 hover:text-textMain'
-                  }`}
-                >
-                  🕸️ Conspiracy Board
-                </button>
-                <button
-                  onClick={() => { playUiClick(); setRightPanelMode(rightPanelMode === 'upgrades' ? 'status' : 'upgrades'); }}
-                  className={`px-3 py-1 rounded text-[8.5px] font-bold uppercase tracking-wider transition-all border ${
-                    rightPanelMode === 'upgrades'
-                      ? 'bg-primary/25 border-primary text-primary font-bold shadow-[0_0_8px_rgba(0,240,255,0.2)]'
-                      : 'bg-transparent border-primary/10 text-textMuted hover:border-primary/30 hover:text-textMain'
-                  }`}
-                >
-                  🎖️ Commendations
-                </button>
+              <button
+                onClick={() => { playUiClick(); setLeftPanelMode('missions'); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9.5px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer ${
+                  leftPanelMode === 'missions' ? 'bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/50 shadow-[0_0_10px_rgba(0,240,255,0.3)]' : 'text-textMuted hover:text-white'
+                }`}
+              >
+                <span>📋</span> MISSIONS
+              </button>
+
+              <button
+                onClick={() => { playUiClick(); setRightPanelMode('intel'); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9.5px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer ${
+                  rightPanelMode === 'intel' ? 'bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/50 shadow-[0_0_10px_rgba(0,240,255,0.3)]' : 'text-textMuted hover:text-white'
+                }`}
+              >
+                <span>🛰</span> INTEL
+              </button>
+
+              <button
+                onClick={() => { playUiClick(); setRightPanelMode('upgrades'); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9.5px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer ${
+                  rightPanelMode === 'upgrades' ? 'bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/50 shadow-[0_0_10px_rgba(0,240,255,0.3)]' : 'text-textMuted hover:text-white'
+                }`}
+              >
+                <span>⚛</span> UPGRADES
+              </button>
+
+              <button
+                onClick={() => { playUiClick(); setRightPanelMode('config'); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9.5px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer ${
+                  rightPanelMode === 'config' ? 'bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/50 shadow-[0_0_10px_rgba(0,240,255,0.3)]' : 'text-textMuted hover:text-white'
+                }`}
+              >
+                <span>⚙</span> CONFIG
+              </button>
+            </div>
+
+            {/* Footer Telemetry Status Rail */}
+            <footer className={`h-8 bg-[#04060d]/90 border-t border-[#00f0ff]/15 flex items-center justify-between px-6 z-40 select-none shrink-0 text-[9px] font-mono text-textMuted transition-opacity duration-700 ${isSequencePlaying ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
+              <div>AETHER OS v2.1.7</div>
+              <div className="text-[#00f0ff]/80 font-bold tracking-widest">{timeStr || '12:47:18 UTC'}</div>
+              <div className="flex items-center gap-1.5 text-success font-bold">
+                SECURE CHANNEL <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping" />
               </div>
-            </div>
-
-            <div className="flex items-center gap-4 text-[9px] text-textMuted select-none font-mono">
-              <span className="hidden sm:inline">SECURE SIGNAL CLEAR // LATTICE LINK STABILIZED</span>
-              <span className="hidden sm:inline">|</span>
-              <span className="text-primary font-bold tracking-wider">{timeStr}</span>
-            </div>
-          </footer>
+            </footer>
+          </>
         )}
       </div>
     </div>

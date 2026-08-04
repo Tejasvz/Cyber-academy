@@ -149,70 +149,74 @@ export const DialogueFeed: React.FC<DialogueFeedProps> = ({ activeLesson }) => {
   };
 
   const speakerNameMap: Record<string, string> = {
-    aurelia: 'Tactical OS Daemon: Aurelia',
-    hesper: 'Dr. Arthur Hesper',
-    kaelen: 'The Chorus (Kaelen)',
-    byte: 'Utility Script: Byte',
-    operator: 'Operator (Fragment)'
+    aurelia: 'AURELIA',
+    hesper: 'HESPER',
+    kaelen: 'KAELEN',
+    byte: 'BYTE',
+    valkyrie: 'VALKYRIE',
+    cyra: 'CYRA',
+    lyra: 'LYRA',
+    solene: 'SOLENE',
+    vance: 'VANCE',
+    operator: 'FRAGMENT'
   };
 
   const speakerColors: Record<string, string> = {
-    aurelia: 'text-[#00f0ff] border-[#00f0ff]/30 bg-[#00f0ff]/5',
-    hesper: 'text-[#ffb000] border-[#ffb000]/30 bg-[#ffb000]/5',
-    kaelen: 'text-[#d946ef] border-[#d946ef]/30 bg-[#d946ef]/5',
-    byte: 'text-red-400 border-red-400/30 bg-red-400/5',
-    operator: 'text-slate-400 border-slate-500/20 bg-slate-500/5'
+    aurelia: 'text-[#00f0ff]',
+    hesper: 'text-[#ffb000]',
+    kaelen: 'text-[#d946ef]',
+    valkyrie: 'text-[#ff0033]',
+    cyra: 'text-[#e0115f]',
+    lyra: 'text-[#00ff88]',
+    solene: 'text-[#ffb700]',
+    vance: 'text-[#0066ff]',
+    byte: 'text-red-400',
+    operator: 'text-slate-300'
   };
 
   return (
-    <div className="w-full bg-[#09090f]/90 border border-primary/20 rounded-lg p-4 font-mono shadow-[0_0_20px_rgba(0,240,255,0.03)] flex flex-col justify-between relative z-20 shrink-0">
+    <div onClick={handleNextClick} className="cyber-glass-panel w-full p-4 font-mono flex flex-col justify-between relative z-20 shrink-0 select-none cursor-pointer">
       {/* Top Header Row of dialogue box */}
-      <div className="flex justify-between items-center border-b border-primary/20 pb-1.5 mb-2 select-none">
-        <div className="flex items-center gap-2">
-          <span className={`text-[8.5px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${speakerColors[currentNode.speaker] || speakerColors.operator}`}>
-            {speakerNameMap[currentNode.speaker] || 'Unknown Origin'}
+      <div className="flex justify-between items-center pb-2 mb-2 select-none">
+        <div className="flex items-center gap-3">
+          <span className={`text-xs font-bold uppercase tracking-widest ${speakerColors[currentNode.speaker] || speakerColors.operator}`}>
+            {speakerNameMap[currentNode.speaker] || 'AURELIA'}
           </span>
           
-          {/* Animated audio visualizer bars */}
-          <div className="flex items-center gap-0.5 h-3 ml-2">
-            <div className={`w-[2px] rounded-full bg-current ${displayedText.length < currentNode.text.length && !currentNode.id.startsWith('idle') ? 'animate-bounce' : 'h-1'}`} style={{ color: currentNode.speaker === 'aurelia' ? '#00f0ff' : currentNode.speaker === 'hesper' ? '#ffb000' : '#d946ef', height: '8px', animationDelay: '0ms' }} />
-            <div className={`w-[2px] rounded-full bg-current ${displayedText.length < currentNode.text.length && !currentNode.id.startsWith('idle') ? 'animate-bounce' : 'h-1'}`} style={{ color: currentNode.speaker === 'aurelia' ? '#00f0ff' : currentNode.speaker === 'hesper' ? '#ffb000' : '#d946ef', height: '12px', animationDelay: '100ms' }} />
-            <div className={`w-[2px] rounded-full bg-current ${displayedText.length < currentNode.text.length && !currentNode.id.startsWith('idle') ? 'animate-bounce' : 'h-1'}`} style={{ color: currentNode.speaker === 'aurelia' ? '#00f0ff' : currentNode.speaker === 'hesper' ? '#ffb000' : '#d946ef', height: '6px', animationDelay: '200ms' }} />
-            <div className={`w-[2px] rounded-full bg-current ${displayedText.length < currentNode.text.length && !currentNode.id.startsWith('idle') ? 'animate-bounce' : 'h-1'}`} style={{ color: currentNode.speaker === 'aurelia' ? '#00f0ff' : currentNode.speaker === 'hesper' ? '#ffb000' : '#d946ef', height: '10px', animationDelay: '50ms' }} />
+          {/* Animated audio visualizer waveform equalizers */}
+          <div className="flex items-end gap-1 h-3.5 px-2 py-0.5 rounded bg-[#00f0ff]/5 border border-[#00f0ff]/20">
+            <div className={`w-[2px] bg-[#00f0ff] rounded-sm eq-bar-1`} />
+            <div className={`w-[2px] bg-[#00f0ff] rounded-sm eq-bar-2`} />
+            <div className={`w-[2px] bg-[#00f0ff] rounded-sm eq-bar-3`} />
+            <div className={`w-[2px] bg-[#00f0ff] rounded-sm eq-bar-4`} />
+            <div className={`w-[2px] bg-[#00f0ff] rounded-sm eq-bar-5`} />
+            <div className={`w-[2px] bg-[#00f0ff] rounded-sm eq-bar-2`} />
+            <div className={`w-[2px] bg-[#00f0ff] rounded-sm eq-bar-4`} />
           </div>
         </div>
 
-        {isSequencePlaying ? (
+        {isSequencePlaying && (
           <button 
             onClick={skipDialogueSequence}
-            className="text-textMuted hover:text-error text-[8px] uppercase font-bold transition-colors cursor-pointer border border-transparent hover:border-error/20 px-1.5 py-0.5 rounded font-mono"
+            className="text-textMuted hover:text-error text-[9px] uppercase font-bold transition-colors cursor-pointer border border-transparent hover:border-error/20 px-1.5 py-0.5 rounded font-mono"
           >
-            [ Skip Transmission ]
+            [ Skip ]
           </button>
-        ) : (
-          <span className="text-success/70 text-[8px] font-bold tracking-widest animate-pulse font-mono">// SECURE CHANNEL</span>
         )}
       </div>
 
       {/* Main Dialogue text body */}
-      <div className="text-[10px] leading-relaxed text-textMain min-h-[40px] whitespace-pre-wrap select-text font-mono flex-grow pr-1 overflow-y-auto">
+      <div className="text-[11.5px] leading-relaxed text-textMain min-h-[44px] whitespace-pre-wrap select-text font-mono flex-grow pr-1">
         {displayedText}
         {displayedText.length < currentNode.text.length && (
-          <span className="w-1.5 h-3 bg-primary inline-block ml-0.5 animate-ping"></span>
+          <span className="w-1.5 h-3.5 bg-primary inline-block ml-1 animate-pulse"></span>
         )}
       </div>
 
-      {/* Advance button */}
-      {isSequencePlaying && (
-        <div className="flex justify-end pt-2 select-none border-t border-primary/10 mt-2">
-          <button
-            onClick={handleNextClick}
-            className="bg-primary/5 border border-primary/30 text-primary hover:bg-primary hover:text-background text-[8px] font-bold uppercase py-0.5 px-3 rounded transition-all cursor-pointer font-mono tracking-widest"
-          >
-            {displayedText.length < currentNode.text.length ? '[ Skip Typing ]' : '[ Next Objective ]'}
-          </button>
-        </div>
-      )}
+      {/* Bottom right indicator */}
+      <div className="flex justify-end pt-1 text-[10px] text-[#00f0ff]/60 tracking-widest font-bold">
+        ...
+      </div>
     </div>
   );
 };

@@ -18,15 +18,21 @@ const CameraController: React.FC = () => {
   const isSequencePlaying = useDialogueStore((s) => s.isSequencePlaying);
   const cameraFocus = useCinematicStore((s) => s.cameraFocus);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    const time = state.clock.elapsedTime;
     const isFocused = isSequencePlaying || cameraFocus === 'hologram_close';
 
-    const targetZ = isFocused ? 4.1 : 5.2;
-    const targetY = isFocused ? 0.1 : 0.2;
+    const baseZ = isFocused ? 4.1 : 5.2;
+    const baseY = isFocused ? 0.1 : 0.2;
     const targetFov = isFocused ? 38 : 45;
 
-    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, delta * 3.5);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, delta * 3.5);
+    // Subtle sinusoidal camera breathing sway
+    const swayX = Math.sin(time * 0.4) * 0.08;
+    const swayY = Math.cos(time * 0.6) * 0.04;
+
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, swayX, delta * 2.5);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, baseY + swayY, delta * 2.5);
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, baseZ, delta * 3.5);
 
     if (camera instanceof THREE.PerspectiveCamera) {
       camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, delta * 3.5);
@@ -73,11 +79,12 @@ export const HologramCanvas3D: React.FC<HologramCanvas3DProps> = ({
   }, [speaker, cinematicLightingColor]);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#040509]">
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#020409]">
       <Canvas
         camera={{ position: [0, 0.2, 5.2], fov: 45 }}
         gl={{ antialias: true, alpha: true }}
       >
+        <fog attach="fog" args={['#020409', 2.5, 14]} />
         <CameraController />
 
         {/* 3D Sci-Fi Environment Room */}
