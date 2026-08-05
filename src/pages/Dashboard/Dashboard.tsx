@@ -12,6 +12,17 @@ import { useAudioStore } from '../../store/audioStore';
 import { TapeDecryptor as _TapeDecryptor } from '../../components/Dialogue/TapeDecryptor';
 import { ConspiracyBoard } from '../../components/Conspiracy/ConspiracyBoard';
 import { SectorMap as _SectorMap } from '../../components/Map/SectorMap';
+import { ShaderBackground } from '../../components/Shaders/ShaderBackground';
+import { ProjectVeilEntryPoint } from '../../components/Landing/ProjectVeilEntryPoint';
+import { SandboxDeploymentLoading } from '../../components/Deployment/SandboxDeploymentLoading';
+import { AureliaAICommandCore } from '../../components/AI/AureliaAICommandCore';
+import { IntelPersonnelDatabase } from '../../components/Intel/IntelPersonnelDatabase';
+import { SectorMapV2 } from '../../components/Map/SectorMapV2';
+import { SkillTreeModule } from '../../components/SkillTree/SkillTreeModule';
+import { MissionBriefingModal } from '../../components/Mission/MissionBriefingModal';
+import { CinematicTacticalHUD } from '../../components/HUD/CinematicTacticalHUD';
+import { MissionCompleteSummary } from '../../components/Mission/MissionCompleteSummary';
+import { LessonTheoryMode } from '../../components/Lesson/LessonTheoryMode';
 
 const LESSON_CINEMATIC_SCRIPTS: Record<string, DialogueNode[]> = {
   B01: [
@@ -222,11 +233,20 @@ const Dashboard = () => {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpMessage, setLevelUpMessage] = useState('');
 
+  // Project Veil OS States
+  const [showProjectVeilSplash, setShowProjectVeilSplash] = useState(false);
+  const [showDeploymentLoading, setShowDeploymentLoading] = useState(false);
+  const [activeShader, setActiveShader] = useState<'grid' | 'pulse' | 'scanline' | 'vortex'>('grid');
+
   // Core Cyber OS Window Store
   const {
     windows,
+    windowOrder,
     openWindow,
     closeWindow,
+    bringToFront,
+    toggleMinimize,
+    toggleMaximize,
   } = useWindowStore();
 
   const { 
@@ -1365,54 +1385,128 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background text-primary flex flex-row font-mono relative overflow-hidden select-none scanlines">
-      
+      {/* Background WebGL Shader */}
+      <ShaderBackground preset={activeShader} />
+
+      {/* Project Veil Entry Point Splash Overlay */}
+      {showProjectVeilSplash && (
+        <div className="fixed inset-0 z-50">
+          <ProjectVeilEntryPoint
+            onEnter={() => {
+              setShowProjectVeilSplash(false);
+              setShowDeploymentLoading(true);
+            }}
+          />
+        </div>
+      )}
+
+      {/* Sandbox Deployment Loading Overlay */}
+      {showDeploymentLoading && (
+        <SandboxDeploymentLoading
+          onComplete={() => setShowDeploymentLoading(false)}
+        />
+      )}
+
       {/* Compact Cyber-OS Sidebar Rail */}
       {bootPhase === 'completed' && (
         <aside className="w-16 md:w-20 bg-surface/95 border-r border-primary/20 flex flex-col items-center justify-between py-6 shrink-0 z-40 select-none shadow-[5px_0_15px_rgba(0,0,0,0.4)]">
-          <div className="flex flex-col items-center gap-6 w-full">
-            {/* Main Logo icon - Opens world map */}
+          <div className="flex flex-col items-center gap-4 w-full overflow-y-auto max-h-[calc(100vh-100px)] scrollbar-none">
+            {/* Main Logo icon - Splash Screen Toggle */}
             <div 
-              className="w-10 h-10 rounded-lg bg-primary/10 border border-primary flex items-center justify-center font-bold text-shadow-neon text-primary animate-pulse select-none cursor-pointer hover:bg-primary/20 transition-colors" 
-              title="Cyber Academy OS" 
-              onClick={() => { playUiClick(); openWindow('world_map'); }}
+              className="w-10 h-10 rounded-lg bg-cyan-500/20 border border-cyan-400 flex items-center justify-center font-bold text-shadow-neon text-cyan-300 animate-pulse select-none cursor-pointer hover:bg-cyan-500/30 transition-colors" 
+              title="Project Veil Splash" 
+              onClick={() => { playUiClick(); setShowProjectVeilSplash(true); }}
             >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+              <span className="text-sm font-black">VEIL</span>
             </div>
 
-            <div className="w-8 h-[1px] bg-primary/20"></div>
+            <div className="w-8 h-[1px] bg-cyan-500/20"></div>
 
             {/* Navigation Toggles */}
             <button
-              onClick={() => { playUiClick(); openWindow('world_map'); }}
-              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-textMuted"
+              onClick={() => { playUiClick(); openWindow('sector_map'); }}
+              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all group relative border border-transparent text-textMuted"
             >
               <span className="text-base">🗺️</span>
               <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Map</span>
-              <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
-                Lattice Sector Map
+              <span className="absolute left-14 bg-surface border border-cyan-500/30 text-cyan-300 text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
+                Sector Zero Map
               </span>
             </button>
 
             <button
               onClick={() => { playUiClick(); openWindow('curriculum'); }}
-              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-textMuted"
+              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all group relative border border-transparent text-textMuted"
             >
               <span className="text-base">🛰️</span>
               <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Missions</span>
-              <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
+              <span className="absolute left-14 bg-surface border border-cyan-500/30 text-cyan-300 text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
                 Mission Control
               </span>
             </button>
 
             <button
+              onClick={() => { playUiClick(); openWindow('ai_assistant'); }}
+              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all group relative border border-transparent text-textMuted"
+            >
+              <span className="text-base">🤖</span>
+              <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Aurelia</span>
+              <span className="absolute left-14 bg-surface border border-cyan-500/30 text-cyan-300 text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
+                Aurelia AI Core
+              </span>
+            </button>
+
+            <button
+              onClick={() => { playUiClick(); openWindow('intel_db'); }}
+              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all group relative border border-transparent text-textMuted"
+            >
+              <span className="text-base">👤</span>
+              <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Roster</span>
+              <span className="absolute left-14 bg-surface border border-cyan-500/30 text-cyan-300 text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
+                Intel Personnel Database
+              </span>
+            </button>
+
+            <button
+              onClick={() => { playUiClick(); openWindow('skill_tree'); }}
+              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all group relative border border-transparent text-textMuted"
+            >
+              <span className="text-base">⚡</span>
+              <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Skills</span>
+              <span className="absolute left-14 bg-surface border border-cyan-500/30 text-cyan-300 text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
+                Skill Tree & Upgrades
+              </span>
+            </button>
+
+            <button
+              onClick={() => { playUiClick(); openWindow('mission_briefing'); }}
+              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all group relative border border-transparent text-textMuted"
+            >
+              <span className="text-base">🎯</span>
+              <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Briefing</span>
+              <span className="absolute left-14 bg-surface border border-cyan-500/30 text-cyan-300 text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
+                Operation Briefing
+              </span>
+            </button>
+
+            <button
+              onClick={() => { playUiClick(); openWindow('tactical_hud'); }}
+              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all group relative border border-transparent text-textMuted"
+            >
+              <span className="text-base">📡</span>
+              <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">HUD</span>
+              <span className="absolute left-14 bg-surface border border-cyan-500/30 text-cyan-300 text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
+                Cinematic Tactical HUD
+              </span>
+            </button>
+
+            <button
               onClick={() => { playUiClick(); openWindow('conspiracy'); }}
-              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-primary/10 hover:text-primary transition-all group relative border border-transparent text-textMuted"
+              className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all group relative border border-transparent text-textMuted"
             >
               <span className="text-base">🕸️</span>
               <span className="text-[7.5px] font-bold uppercase tracking-wider scale-90">Intel</span>
-              <span className="absolute left-14 bg-surface border border-primary/30 text-primary text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
+              <span className="absolute left-14 bg-surface border border-cyan-500/30 text-cyan-300 text-[8px] font-bold uppercase py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none z-50 whitespace-nowrap shadow-neon">
                 Conspiracy Board
               </span>
             </button>
@@ -1805,6 +1899,25 @@ const Dashboard = () => {
                     </div>
 
                     <div className="space-y-1.5 pt-2 border-t border-primary/10">
+                      <span className="text-[8.5px] text-textMuted uppercase font-bold">WebGL Background Shader:</span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {(['grid', 'pulse', 'scanline', 'vortex'] as const).map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setActiveShader(s)}
+                            className={`py-1 text-[8.5px] uppercase font-bold border rounded transition-all ${
+                              activeShader === s
+                                ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_8px_rgba(0,240,255,0.2)]'
+                                : 'bg-[#171721]/30 border-primary/10 text-textMuted hover:border-primary/30'
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 border-t border-primary/10">
                       <span className="text-[8.5px] text-textMuted uppercase font-bold">OS Sound System:</span>
                       <button 
                         onClick={() => { playUiClick(); toggleMute(); }}
@@ -1982,6 +2095,70 @@ const Dashboard = () => {
             </div>
           </footer>
         )}
+
+        {/* Cyber OS Dynamic Window Overlay Manager */}
+        {windowOrder.map((wId) => {
+          const win = windows[wId];
+          if (!win || !win.isOpen || win.isMinimized) return null;
+
+          return (
+            <div
+              key={wId}
+              onClick={() => bringToFront(wId)}
+              style={{
+                position: 'fixed',
+                left: win.isMaximized ? 0 : win.x,
+                top: win.isMaximized ? 0 : win.y,
+                width: win.isMaximized ? '100vw' : win.width,
+                height: win.isMaximized ? '100vh' : win.height,
+                zIndex: windowOrder.indexOf(wId) + 50,
+              }}
+              className="bg-[#0a0e14]/95 border border-cyan-500/40 rounded-lg shadow-[0_0_30px_rgba(0,240,255,0.25)] flex flex-col overflow-hidden backdrop-blur-xl select-none"
+            >
+              {/* Window Header */}
+              <div className="bg-cyan-950/80 border-b border-cyan-500/30 px-3 py-2 flex justify-between items-center cursor-move text-xs font-mono text-cyan-300">
+                <div className="flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="font-bold tracking-wider uppercase">{win.title}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleMinimize(wId); }}
+                    className="w-4 h-4 rounded bg-cyan-900/60 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500 hover:text-black flex items-center justify-center font-bold text-[10px]"
+                  >
+                    _
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleMaximize(wId); }}
+                    className="w-4 h-4 rounded bg-cyan-900/60 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500 hover:text-black flex items-center justify-center font-bold text-[10px]"
+                  >
+                    □
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); closeWindow(wId); }}
+                    className="w-4 h-4 rounded bg-red-950/60 border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-black flex items-center justify-center font-bold text-[10px]"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Window Content */}
+              <div className="flex-1 overflow-hidden p-2">
+                {wId === 'terminal' && <Terminal activeLesson={activeLesson} />}
+                {wId === 'lesson' && <LessonTheoryMode />}
+                {wId === 'ai_assistant' && <AureliaAICommandCore />}
+                {wId === 'intel_db' && <IntelPersonnelDatabase />}
+                {wId === 'sector_map' && <SectorMapV2 />}
+                {wId === 'skill_tree' && <SkillTreeModule />}
+                {wId === 'mission_briefing' && <MissionBriefingModal onLaunchMission={() => { openWindow('tactical_hud'); }} />}
+                {wId === 'tactical_hud' && <CinematicTacticalHUD />}
+                {wId === 'mission_results' && <MissionCompleteSummary onContinue={() => closeWindow('mission_results')} />}
+                {wId === 'conspiracy' && <ConspiracyBoard completedLessons={completedLessons} />}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
