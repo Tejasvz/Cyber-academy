@@ -118,47 +118,38 @@ export const executeCommand = async (req: AuthRequest, res: Response): Promise<v
 
   // File checking helper
   const checkFileExists = (filename: string): { exists: boolean; content: string } => {
-    if (lessonId === 'B01' && filename === 'traffic_dump.pcap' && session.currentDir === '~') {
-      const b01Flag = generateFlag(userId, 'B01');
+    if ((lessonId === 'A1-01' || lessonId === 'B02') && filename === 'hint.txt' && session.currentDir === '~') {
+      return { exists: true, content: 'AURELIA: Try exploring hidden files! Use "ls -la" to see dotfiles, "cd archives" to enter subdirectories, and "cat .flag.txt" to read hidden flags.' };
+    }
+    if ((lessonId === 'A1-01' || lessonId === 'B02') && filename === '.flag.txt' && session.currentDir === '~/archives') {
+      const flagVal = generateFlag(userId, 'A1-01');
+      return { exists: true, content: flagVal };
+    }
+    if ((lessonId === 'A1-05' || lessonId === 'B01') && filename === 'traffic_dump.pcap' && session.currentDir === '~') {
+      const flagVal = generateFlag(userId, 'A1-05');
       return {
         exists: true,
-        content: `=== PACKET DUMP (HTTP SESSION) ===\r\nPacket #1: [TCP Handshake SYN] 192.168.1.10 -> 10.10.12.5 (Port 80)\r\nPacket #2: [TCP Handshake SYN-ACK] 10.10.12.5 -> 192.168.1.10\r\nPacket #3: [TCP Handshake ACK] 192.168.1.10 -> 10.10.12.5\r\nPacket #4: [HTTP GET /] 192.168.1.10 -> 10.10.12.5\r\nPacket #5: [HTTP 200 OK] (application/html)\r\nPacket #6: [HTTP POST /login] 192.168.1.10 -> 10.10.12.5\r\n  Host: bank.insecure-traffic.local\r\n  Content-Type: application/x-www-form-urlencoded\r\n  \r\n  POSTDATA: username=admin&password=${b01Flag}&submit=Login\r\nPacket #7: [HTTP 302 Found] Redirect to /dashboard\r\n==================================`
+        content: `=== PACKET DUMP (HTTP SESSION) ===\r\nPacket #1: [TCP Handshake SYN] 192.168.1.10 -> 10.10.12.5 (Port 80)\r\nPacket #2: [TCP Handshake SYN-ACK] 10.10.12.5 -> 192.168.1.10\r\nPacket #3: [TCP Handshake ACK] 192.168.1.10 -> 10.10.12.5\r\nPacket #4: [HTTP GET /] 192.168.1.10 -> 10.10.12.5\r\nPacket #5: [HTTP 200 OK] (application/html)\r\nPacket #6: [HTTP POST /login] 192.168.1.10 -> 10.10.12.5\r\n  Host: bank.insecure-traffic.local\r\n  Content-Type: application/x-www-form-urlencoded\r\n  \r\n  POSTDATA: username=admin&password=${flagVal}&submit=Login\r\nPacket #7: [HTTP 302 Found] Redirect to /dashboard\r\n==================================`
       };
     }
-    if (lessonId === 'B02' && filename === 'hint.txt' && session.currentDir === '~') {
-      return { exists: true, content: 'Try exploring hidden files in the archives folder! Use "ls -a" to see hidden files, "cd archives" to enter it, and "cat .flag.txt" to view contents.' };
-    }
-    if (lessonId === 'B02' && filename === '.flag.txt' && session.currentDir === '~/archives') {
-      const b02Flag = generateFlag(userId, 'B02');
-      return { exists: true, content: b02Flag };
-    }
-    if (lessonId === 'B05' && filename === 'hash.txt' && session.currentDir === '~') {
+    if ((lessonId === 'A3-03' || lessonId === 'B05') && filename === 'hashes.txt' && session.currentDir === '~') {
       return { exists: true, content: 'e59cd9086abb32e185ca1891124892c9' };
     }
-    if (lessonId === 'B05' && filename === 'wordlist.txt' && session.currentDir === '~') {
+    if ((lessonId === 'A3-03' || lessonId === 'B05') && filename === 'rockyou.txt' && session.currentDir === '~') {
       return { exists: true, content: `password123\r\nadmin\r\nqwerty\r\nwelcome\r\n${currentFlag}\r\nletmein\r\nshadow` };
     }
-    if (lessonId === 'B07' && filename === 'emails.txt' && session.currentDir === '~') {
+    if ((lessonId === 'A4-07' || lessonId === 'B07') && filename === 'emails.txt' && session.currentDir === '~') {
       return {
         exists: true,
-        content: 'Email ID: 1\r\nFrom: accounting@cyberacademy.com\r\nTo: operator@cyberacademy.com\r\nSubject: Q2 Budget Report Review\r\n---\r\nEmail ID: 2\r\nFrom: support@micr0s0ft-security-update.com\r\nTo: operator@cyberacademy.com\r\nSubject: ACTION REQUIRED: Reset password immediately\r\n---\r\nEmail ID: 3\r\nFrom: notifications@github.local\r\nTo: operator@cyberacademy.com\r\nSubject: Security Advisory'
+        content: 'Email ID: 1\r\nFrom: accounting@directorate.aether\r\nTo: assistant@directorate.aether\r\nSubject: Quarterly Memory Backup Audit\r\n---\r\nEmail ID: 2\r\nFrom: support@aether-dlrectorate.com\r\nTo: assistant@directorate.aether\r\nSubject: ACTION REQUIRED: Urgent security update password reset\r\n---\r\nEmail ID: 3\r\nFrom: notifications@void-relay.local\r\nTo: assistant@directorate.aether\r\nSubject: Security Advisory'
       };
-    }
-    if (lessonId === 'B08' && filename === 'hash.txt' && session.currentDir === '~') {
-      return { exists: true, content: '772f7d9812a8123ab49a37c0938478ff' };
-    }
-    if (lessonId === 'B08' && filename === 'wordlist.txt' && session.currentDir === '~') {
-      return { exists: true, content: `password\r\nadmin\r\nletmein\r\n${currentFlag}\r\nshadow` };
-    }
-    if (lessonId === 'M08' && filename === 'readme.txt' && session.currentDir === '~') {
-      return { exists: true, content: 'Welcome to the Mediator Boss Challenge. Targets are internal web portals and system binaries.' };
     }
     return { exists: false, content: '' };
   };
 
   const checkLessonContext = (expectedIds: string[], cmdName: string): boolean => {
     if (!expectedIds.includes(lessonId)) {
-      output = `\x1b[33m[WARNING] '${cmdName}' is only available in specific labs (e.g. [${expectedIds.join(', ')}]).\x1b[0m`;
+      output = `\x1b[33m[WARNING] '${cmdName}' is active in target lab environments (e.g. [${expectedIds.join(', ')}]).\x1b[0m`;
       return false;
     }
     return true;
@@ -174,46 +165,38 @@ export const executeCommand = async (req: AuthRequest, res: Response): Promise<v
                '  \x1b[36mwhoami\x1b[0m                - Display active user alias\r\n' +
                '  \x1b[36mdate\x1b[0m                  - Print current date and time\r\n' +
                '  \x1b[36mpwd\x1b[0m                   - Print current directory\r\n' +
-               '  \x1b[36mls\x1b[0m                    - List files (`ls -a` for hidden)\r\n' +
+               '  \x1b[36mls\x1b[0m                    - List files (`ls -la` for hidden)\r\n' +
                '  \x1b[36mcd <dir>\x1b[0m              - Change directories\r\n' +
                '  \x1b[36mcat <file>\x1b[0m            - Read file contents\r\n' +
                '  \x1b[36mgrep <word> <file>\x1b[0m    - Search text in files\r\n' +
                '  \x1b[36mstrings <file>\x1b[0m        - Extract text strings from binary files\r\n' +
                '  \x1b[36msubmit <flag>\x1b[0m         - Submit lesson flag (e.g. submit flag{...})\r\n';
 
-      output += '\r\nModule Hacking Commands for current environment:\r\n';
-      if (lessonId === 'B03') {
+      output += '\r\nModule Hacking Commands for active Neural Veil lab:\r\n';
+      if (['A1-03', 'B03'].includes(lessonId)) {
         output += '  \x1b[33mwhois <domain>\x1b[0m        - Query domain registration registry\r\n' +
                   '  \x1b[33mnslookup <domain>\x1b[0m     - Domain query tool (`-type=txt` supported)\r\n' +
                   '  \x1b[33mdig <domain>\x1b[0m          - Domain lookup tool (`-t txt` supported)\r\n';
-      } else if (lessonId === 'B04' || lessonId === 'B08') {
+      } else if (['A1-02', 'B04', 'B08'].includes(lessonId)) {
         output += '  \x1b[33mnmap <ip>\x1b[0m             - Port scanner (`-sS` supported)\r\n';
-      } else if (lessonId === 'B05' || lessonId === 'B08') {
+      } else if (['A3-03', 'B05'].includes(lessonId)) {
         output += '  \x1b[33mhashcat <hash> <dict>\x1b[0m - Crack MD5 password hashes (-m 0 supported)\r\n' +
                   '  \x1b[33mjohn <hash> --wordlist\x1b[0m- Crack hashes using a dictionary file\r\n';
-      } else if (['B06', 'B08', 'M05', 'M08', 'A02', 'A05', 'A07'].includes(lessonId)) {
-        output += '  \x1b[33mcurl <url>\x1b[0m            - Send HTTP requests or interact with local directories\r\n';
-      } else if (lessonId === 'B07') {
-        output += '  \x1b[33manalyze-email <id>\x1b[0m    - Inspect header validation (SPF/DKIM) on email ID\r\n';
-      } else if (lessonId === 'M01') {
-        output += '  \x1b[33mintercept --start\x1b[0m     - Open interactive proxy interception terminal\r\n';
-      } else if (lessonId === 'M02') {
-        output += '  \x1b[33mexploit --url <url>\x1b[0m   - Send URL vectors with payload script reflections\r\n';
-      } else if (lessonId === 'M03' || lessonId === 'M08') {
-        output += '  \x1b[33mexploit-login --username <user> --password <pass>\x1b[0m - Test login input for SQL bypasses\r\n';
-      } else if (lessonId === 'M04') {
-        output += '  \x1b[33mhydra -l admin -P <dict> http-post-form <url>\x1b[0m - Brute-force credentials\r\n';
-      } else if (lessonId === 'M06') {
+      } else if (['A1-06', 'A2-06', 'A5-05', 'B06', 'M05'].includes(lessonId)) {
+        output += '  \x1b[33mcurl <url>\x1b[0m            - Send HTTP requests or interact with endpoints\r\n';
+      } else if (['A3-02', 'M04'].includes(lessonId)) {
+        output += '  \x1b[33mhydra -l admin -P <dict> ssh://<target>\x1b[0m - Brute-force credentials\r\n';
+      } else if (['A3-01', 'M06'].includes(lessonId)) {
         output += '  \x1b[33marpspoof -i eth0 -t <t1> <t2>\x1b[0m - Perform ARP cache poisoning\r\n';
-      } else if (lessonId === 'M07' || lessonId === 'M08') {
+      } else if (['A3-07', 'M07'].includes(lessonId)) {
         output += '  \x1b[33mfind / -perm -4000 2>/dev/null\x1b[0m - Search files with SUID root flags\r\n';
-      } else if (lessonId === 'A01' || lessonId === 'A07') {
+      } else if (['A2-02', 'A5-05'].includes(lessonId)) {
         output += '  \x1b[33msqlmap -u <url> --dump\x1b[0m - Automate SQL database injections\r\n';
-      } else if (lessonId === 'A03') {
+      } else if (['A4-01'].includes(lessonId)) {
         output += '  \x1b[33m./vulnerable_binary <payload>\x1b[0m - Run overflow binary test\r\n';
-      } else if (lessonId === 'A04') {
+      } else if (['A3-05'].includes(lessonId)) {
         output += '  \x1b[33mGetUserSPNs.py -request -dc-ip <ip> <domain>\x1b[0m - Harvest active directory tickets\r\n';
-      } else if (lessonId === 'A06' || lessonId === 'A07') {
+      } else if (['A4-05', 'A5-05'].includes(lessonId)) {
         output += '  \x1b[33mobfuscate --payload <f> --method xor\x1b[0m - Obfuscate payload signatures\r\n';
       }
       break;
@@ -236,20 +219,18 @@ export const executeCommand = async (req: AuthRequest, res: Response): Promise<v
 
     case 'ls':
       const listAll = args.includes('-a') || args.includes('-la');
-      if (lessonId === 'B01') {
-        output = listAll ? '.  ..  traffic_dump.pcap' : 'traffic_dump.pcap';
-      } else if (lessonId === 'B02') {
+      if (lessonId === 'A1-01' || lessonId === 'B02') {
         if (session.currentDir === '~') {
           output = listAll ? '.  ..  archives/  hint.txt' : 'archives/  hint.txt';
         } else {
           output = listAll ? '.  ..  .flag.txt' : '';
         }
-      } else if (lessonId === 'B05') {
-        output = listAll ? '.  ..  hash.txt  wordlist.txt' : 'hash.txt  wordlist.txt';
-      } else if (lessonId === 'B07') {
+      } else if (lessonId === 'A1-05' || lessonId === 'B01') {
+        output = listAll ? '.  ..  traffic_dump.pcap' : 'traffic_dump.pcap';
+      } else if (lessonId === 'A3-03' || lessonId === 'B05') {
+        output = listAll ? '.  ..  hashes.txt  rockyou.txt' : 'hashes.txt  rockyou.txt';
+      } else if (lessonId === 'A4-07' || lessonId === 'B07') {
         output = listAll ? '.  ..  emails.txt' : 'emails.txt';
-      } else if (lessonId === 'B08') {
-        output = listAll ? '.  ..  hash.txt  wordlist.txt' : 'hash.txt  wordlist.txt';
       } else {
         output = listAll ? '.  ..  readme.txt' : 'readme.txt';
       }

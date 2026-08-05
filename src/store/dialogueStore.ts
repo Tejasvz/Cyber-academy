@@ -1,21 +1,24 @@
 import { create } from 'zustand';
 
+export type SpeakerId = 'aurelia' | 'hesper' | 'kaelen' | 'kael' | 'byte' | 'operator' | 'valkyrie' | 'cyra' | 'lyra' | 'solene' | 'vance' | 'rhea' | 'milo';
+export type ExpressionType = 'neutral' | 'worried' | 'angry' | 'glitch' | 'talking' | 'explaining' | 'exhausted' | 'smile' | 'panic' | 'surprised';
+
 export interface DialogueNode {
   id: string;
-  speaker: 'aurelia' | 'hesper' | 'kaelen' | 'byte' | 'operator' | 'valkyrie' | 'cyra' | 'lyra' | 'solene' | 'vance';
+  speaker: SpeakerId;
   text: string;
   voiceUrl?: string;
-  expression?: 'neutral' | 'worried' | 'angry' | 'glitch' | 'talking' | 'explaining' | 'exhausted' | 'smile' | 'panic';
+  expression?: ExpressionType;
   typingSpeed?: number; // Base speed per character in milliseconds
   pauseIndices?: Record<number, number>; // Map character index to pause duration in ms (e.g., { 10: 500 } pauses for 500ms at character 10)
   interruptsPrevious?: boolean; // Clips active comms immediately
-  coSpeaker?: 'aurelia' | 'hesper' | 'kaelen' | 'byte' | 'operator' | 'valkyrie' | 'cyra' | 'lyra' | 'solene' | 'vance';
-  coSpeakerExpression?: 'neutral' | 'worried' | 'angry' | 'glitch' | 'talking' | 'explaining' | 'exhausted' | 'smile' | 'panic';
+  coSpeaker?: SpeakerId;
+  coSpeakerExpression?: ExpressionType;
 }
 
 export interface ChatMessage {
   id: string;
-  sender: 'aurelia' | 'hesper' | 'kaelen' | 'byte' | 'operator' | 'valkyrie' | 'cyra' | 'lyra' | 'solene' | 'vance';
+  sender: SpeakerId;
   text: string;
   timestamp: string;
   isGlitched?: boolean;

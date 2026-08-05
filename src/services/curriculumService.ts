@@ -5,6 +5,7 @@ export interface Lesson {
   id: string;
   title: string;
   technique: string;
+  technique_note?: string;
   theory: string;
   guide?: string;
   lab: string;
@@ -13,6 +14,7 @@ export interface Lesson {
   cheatSheet?: string;
   blueTeamLogs?: string;
   briefing: string;
+  briefing_note?: string;
   threatAssessment?: string;
   loreUnlock?: string;
   remediation?: {
@@ -23,12 +25,27 @@ export interface Lesson {
   };
 }
 
+export interface Character {
+  id: string;
+  name: string;
+  role: string;
+  arc: string;
+}
+
+export interface Story {
+  title: string;
+  premise: string;
+  characters: Character[];
+  actSummaries: string[];
+}
+
 export interface ModuleTier {
   name: string;
   modules: Lesson[];
 }
 
 export interface Curriculum {
+  story?: Story;
   tiers: ModuleTier[];
 }
 

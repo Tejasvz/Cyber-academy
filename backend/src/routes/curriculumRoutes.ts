@@ -1,4 +1,6 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Request, type Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { prisma } from '../utils/prisma';
 
 const router = Router();
@@ -31,7 +33,18 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       }))
     }));
 
-    res.json({ tiers: formattedTiers });
+    let storyData = undefined;
+    try {
+      const curriculumPath = path.join(__dirname, '../data/curriculum.json');
+      if (fs.existsSync(curriculumPath)) {
+        const raw = fs.readFileSync(curriculumPath, 'utf-8');
+        storyData = JSON.parse(raw).story;
+      }
+    } catch (_e) {
+      // story optional
+    }
+
+    res.json({ story: storyData, tiers: formattedTiers });
   } catch (error) {
     console.error('Error reading curriculum from DB:', error);
     res.status(500).json({ error: 'Failed to load curriculum' });

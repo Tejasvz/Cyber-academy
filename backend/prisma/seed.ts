@@ -46,7 +46,7 @@ async function main() {
           blueTeamLogs: moduleObj.blueTeamLogs || null,
           remediation: moduleObj.remediation || null,
           difficulty: tier.name,
-          xpReward: moduleObj.id.endsWith('8') || moduleObj.id === 'A07' ? 200 : 100,
+          xpReward: moduleObj.id.endsWith('05') || moduleObj.id.endsWith('09') ? 200 : 100,
           orderIndex: lessonIndex++,
         },
       });

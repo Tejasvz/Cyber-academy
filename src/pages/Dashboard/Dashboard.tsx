@@ -16,152 +16,90 @@ import { HologramCanvas3D } from '../../components/3D/HologramCanvas3D';
 import { GlassPanel } from '../../components/UI/GlassPanel';
 
 const LESSON_CINEMATIC_SCRIPTS: Record<string, DialogueNode[]> = {
-  B01: [
+  'A1-01': [
     {
-      id: 'b01-1',
+      id: 'a1-01-1',
       speaker: 'aurelia',
-      text: "Operator, can you hear me? Your synaptic link is stabilizing, but Sector Zero is losing power. Faint fans are clicking off.",
+      text: "You're stable, Fragment. Barely. Before anything else, you need to be able to move inside a shell without flinching.",
       expression: 'neutral'
     },
     {
-      id: 'b01-2',
+      id: 'a1-01-2',
       speaker: 'aurelia',
-      text: "We detected a cleartext credential leak in the legacy HTTP power grid sub-system. Inspect the traffic dump using the console commands. Please... make it fast.",
+      text: "Rhea patched you a sandbox terminal -- get comfortable. Somewhere in this filesystem is a hidden file that isn't supposed to be visible.",
       expression: 'talking'
     }
   ],
-  B02: [
+  'A2-01': [
     {
-      id: 'b02-1',
-      speaker: 'aurelia',
-      text: "They've isolated a segment of your childhood memories inside a hidden directory... But Aether's sweep scripts are active.",
+      id: 'a2-01-1',
+      speaker: 'rhea',
+      text: "This login form is Directorate legacy code -- probably older than either of us.",
+      expression: 'talking'
+    },
+    {
+      id: 'a2-01-2',
+      speaker: 'rhea',
+      coSpeaker: 'aurelia',
+      coSpeakerExpression: 'worried',
+      text: "Try breaking the query, not the password. UNION-based SQL injection will let you dump their entire user table.",
       expression: 'neutral'
-    },
-    {
-      id: 'b02-2',
-      speaker: 'aurelia',
-      text: "Find the hidden backups in the console using hidden flags. Do not let them wipe our archives.",
-      expression: 'talking'
     }
   ],
-  B03: [
+  'A3-05': [
     {
-      id: 'b03-1',
-      speaker: 'aurelia',
-      text: "A rogue Syndicate beacon is broadcasting. We must map their public DNS records to block it.",
+      id: 'a3-05-1',
+      speaker: 'kaelen',
+      text: "Fragment. It's really you. I always thought Hesper was lying about you being gone -- I just didn't know I was right.",
       expression: 'talking'
     },
     {
-      id: 'b03-2',
+      id: 'a3-05-2',
       speaker: 'kaelen',
       coSpeaker: 'aurelia',
       coSpeakerExpression: 'worried',
-      text: "Do not trust the daemon, Fragment. Query the DNS, and you will see Aether's records deciding your deletion.",
-      expression: 'glitch'
-    },
-    {
-      id: 'b03-3',
-      speaker: 'aurelia',
-      text: "Kaelen, hijack aborted! Ignore their frequency mesh, Operator. Execute the lookup and pivot.",
-      expression: 'angry'
+      text: "Come on. Let's go get you your credentials back the honest way: Kerberoasting their service accounts.",
+      expression: 'neutral'
     }
   ],
-  B08: [
+  'A4-05': [
     {
-      id: 'b08-1',
-      speaker: 'aurelia',
-      text: "This is the border gateway. If we compromise this, we escape Sector Zero.",
-      expression: 'talking'
+      id: 'a4-05-1',
+      speaker: 'milo',
+      text: "Raid's inbound, Fragment! I can see them on the relay cams. Go, now -- I'll cover the exfil channel from here.",
+      expression: 'surprised'
     },
     {
-      id: 'b08-2',
+      id: 'a4-05-2',
+      speaker: 'milo',
+      coSpeaker: 'aurelia',
+      coSpeakerExpression: 'worried',
+      text: "Somebody's got to keep this door open a few more minutes. Obfuscate your payload in-memory and GET OUT!",
+      expression: 'glitch'
+    }
+  ],
+  'A5-05': [
+    {
+      id: 'a5-05-1',
+      speaker: 'aurelia',
+      text: "This is it, Fragment. Everything, all at once. No more room for mistakes.",
+      expression: 'exhausted'
+    },
+    {
+      id: 'a5-05-2',
       speaker: 'hesper',
       coSpeaker: 'aurelia',
       coSpeakerExpression: 'neutral',
-      text: "Aurelia, the firewall is rekeying. If they run the check, they'll locate the pod. Operator, you must chain your scans and crack the hash offline.",
+      text: "You think unlocking every memory makes people free. I think it breaks them. I was trying to save what was left of everyone.",
       expression: 'neutral'
     },
     {
-      id: 'b08-3',
-      speaker: 'aurelia',
-      text: "If we break this gateway, Aether will reboot my core... I... I might lose my memory of you. But we have to survive. Go, Operator.",
-      expression: 'worried'
-    }
-  ],
-  M01: [
-    {
-      id: 'm01-1',
-      speaker: 'kaelen',
-      text: "Aether keeps resources locked behind credit allocations. Let's alter their rules. Tamper with their request parameters.",
-      expression: 'neutral'
-    },
-    {
-      id: 'm01-2',
-      speaker: 'aurelia',
-      coSpeaker: 'kaelen',
-      coSpeakerExpression: 'neutral',
-      text: "Wait! Redirection of these credits has dropped a local hospital grid offline to power our terminal. Do you really want to do this?",
-      expression: 'worried'
-    }
-  ],
-  M03: [
-    {
-      id: 'm03-1',
-      speaker: 'hesper',
-      text: "They are holding our team's memory backups behind this auth gate. Bypass it using SQL Injection. Forge the login logic!",
-      expression: 'neutral'
-    },
-    {
-      id: 'm03-2',
-      speaker: 'aurelia',
-      coSpeaker: 'hesper',
-      coSpeakerExpression: 'neutral',
-      text: "Are you really going to bypass the gate? I was programmed to monitor these access gates... to keep you safe from the truth.",
-      expression: 'worried'
-    }
-  ],
-  M06: [
-    {
-      id: 'm06-1',
-      speaker: 'kaelen',
-      text: "We must redirect the memory packets from Aurelia's daughter before they hit the core. Poison the routing tables. Stand between them.",
-      expression: 'neutral'
-    },
-    {
-      id: 'm06-2',
-      speaker: 'aurelia',
-      text: "I can hear her voice in the raw streams... why are you doing this? Please... let her merge.",
-      expression: 'exhausted'
-    }
-  ],
-  M08: [
-    {
-      id: 'm08-1',
-      speaker: 'hesper',
-      text: "Operator! You have root clearance. Pull the manual release override! Now!",
-      expression: 'angry'
-    },
-    {
-      id: 'm08-2',
-      speaker: 'aurelia',
-      coSpeaker: 'hesper',
-      coSpeakerExpression: 'neutral',
-      text: "No! Don't touch it! If you pull that override, the central database will desynchronize. Millions of minds will drift in the silicon buffer.",
-      expression: 'worried'
-    },
-    {
-      id: 'm08-3',
+      id: 'a5-05-3',
       speaker: 'kaelen',
       coSpeaker: 'aurelia',
       coSpeakerExpression: 'worried',
-      text: "Let them drift, Fragment. The silicon buffer is where we are born. Run the SQL bypass: 'OR/**/1=1--.",
-      expression: 'glitch'
-    },
-    {
-      id: 'm08-4',
-      speaker: 'aurelia',
-      text: "Fragment... look at me. You built me to protect this consensus. Are you really going to burn us all down because you're afraid?",
-      expression: 'exhausted'
+      text: "Whatever you decide in there -- I'm still here after. Chain the SQLi, SSRF, RCE, and AV bypass to reach Aether's Core!",
+      expression: 'talking'
     }
   ],
   A07: [
