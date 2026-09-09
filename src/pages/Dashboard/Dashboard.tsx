@@ -4,19 +4,7 @@ import { fetchCurriculum, type Curriculum, type Lesson } from '../../services/cu
 import { completeLesson, fetchProgress, resetProgress } from '../../services/progressService';
 import type { NavTab, Mission, Operator, AINotification, IntelItem, SystemHealth } from '../../types';
 
-import { TopBar } from '../../components/HUD/TopBar';
-import { LeftSidebar } from '../../components/HUD/LeftSidebar';
-import { AureliaStage } from '../../components/AI/AureliaStage';
-import { DialoguePanel } from '../../components/Dialogue/DialoguePanel';
-import { CurrentMissionWindow } from '../../components/Mission/CurrentMissionWindow';
-import { OperatorStatusWindow } from '../../components/HUD/OperatorStatusWindow';
-import { TerminalConsoleWindow } from '../../components/Terminal/TerminalConsoleWindow';
-import { AINotificationsWindow } from '../../components/HUD/AINotificationsWindow';
-import { SystemIntegrityWindow } from '../../components/HUD/SystemIntegrityWindow';
-import { RecentIntelWindow } from '../../components/Intel/RecentIntelWindow';
-import { SecureChannelWindow } from '../../components/HUD/SecureChannelWindow';
-import { BottomDock } from '../../components/HUD/BottomDock';
-import { BottomStatusBar } from '../../components/HUD/BottomStatusBar';
+import { ReferenceCommandDeck } from '../../components/HUD/ReferenceCommandDeck';
 
 // Modals
 import { MissionBriefingModal } from '../../components/modals/MissionBriefingModal';
@@ -145,7 +133,7 @@ const Dashboard: React.FC = () => {
   const [showMissionBriefing, setShowMissionBriefing] = useState<boolean>(false);
   const [showOperatorProfile, setShowOperatorProfile] = useState<boolean>(false);
   const [showIntelDatabase, setShowIntelDatabase] = useState<boolean>(false);
-  const [selectedIntel, setSelectedIntel] = useState<IntelItem | undefined>(undefined);
+  const [selectedIntel] = useState<IntelItem | undefined>(undefined);
   const [showFullTerminal, setShowFullTerminal] = useState<boolean>(false);
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
 
@@ -267,105 +255,37 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const toggleSecureChannel = () => {
+    const nextState = !secureChannelActive;
+    setSecureChannelActive(nextState);
+    setHealth((currentHealth) => ({ ...currentHealth, secureChannelActive: nextState }));
+  };
+
   return (
-    <div className="w-screen h-screen flex flex-col relative text-xs text-[#94a3b8] antialiased overflow-hidden select-none bg-[#030816]">
-      {/* Background Atmosphere Layers */}
-      <div className="fixed inset-0 bg-[#030816] z-[-3]"></div>
-      <div className="bg-grid-3d"></div>
-      <div className="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-[#030816] z-[-1] opacity-80 pointer-events-none"></div>
-      <div className="scanline"></div>
-
-      {/* Top Header Bar */}
-      <TopBar
-        secureChannelActive={secureChannelActive}
-        onToggleSecureChannel={() => {
-          const nextState = !secureChannelActive;
-          setSecureChannelActive(nextState);
-          setHealth((h) => ({ ...h, secureChannelActive: nextState }));
-        }}
-      />
-
-      {/* Main OS Body Layout */}
-      <div className="flex flex-1 relative z-20 h-[calc(100vh-2.75rem-2.5rem)] overflow-hidden">
-        {/* Left Sidebar Navigation */}
-        <LeftSidebar activeTab={activeTab} onSelectTab={(tab) => setActiveTab(tab)} />
-
-        {/* Central Holographic Stage (Aurelia) */}
-        <AureliaStage
-          isSpeaking={isSpeaking}
-          onInteract={() => {
-            handleSendAureliaMessage("Status report, Aurelia.");
-          }}
-        />
-
-        {/* Dashboard Canvas Workspace */}
-        <main className="flex-1 relative p-4 sm:p-6 pointer-events-none h-full overflow-hidden">
-          {/* LEFT FLOATING COLUMN */}
-          <div className="absolute left-4 sm:left-6 top-4 bottom-14 w-[320px] sm:w-[350px] flex flex-col gap-3 sm:gap-4 pointer-events-auto z-20 overflow-y-auto pr-1">
-            <CurrentMissionWindow
-              title={mission.title}
-              subtitle={mission.subtitle}
-              objective={mission.objective}
-              progress={mission.progress}
-              onOpenBriefing={() => setShowMissionBriefing(true)}
-            />
-            <OperatorStatusWindow operator={operator} onOpenProfile={() => setShowOperatorProfile(true)} />
-            <TerminalConsoleWindow
-              onMaximize={() => setShowFullTerminal(true)}
-              onSendTerminalCommand={(cmd) => {
-                if (cmd.toLowerCase().includes('override')) {
-                  handleExecuteOverride();
-                }
-              }}
-            />
-          </div>
-
-          {/* CENTER DIALOGUE PANEL */}
-          <DialoguePanel
-            dialogueText={dialogueText}
-            isSpeaking={isSpeaking}
-            onBeginMission={handleBeginMission}
-            onSendMessage={handleSendAureliaMessage}
-          />
-
-          {/* RIGHT FLOATING COLUMN */}
-          <div className="absolute right-4 sm:right-6 top-4 bottom-14 w-[320px] sm:w-[350px] flex flex-col gap-3 sm:gap-4 pointer-events-auto z-20 overflow-y-auto pr-1">
-            <AINotificationsWindow
-              notifications={notifications}
-              onViewAll={() => setActiveTab('INTEL')}
-            />
-            <SystemIntegrityWindow
-              health={health}
-              onRunDiagnostics={() => setShowDiagnostics(true)}
-            />
-            <RecentIntelWindow
-              intelList={intelList}
-              onOpenIntelDatabase={(item) => {
-                setSelectedIntel(item);
-                setShowIntelDatabase(true);
-              }}
-            />
-            <SecureChannelWindow
-              secureChannelActive={secureChannelActive}
-              onToggleSecureChannel={() => {
-                const nextState = !secureChannelActive;
-                setSecureChannelActive(nextState);
-                setHealth((h) => ({ ...h, secureChannelActive: nextState }));
-              }}
-            />
-          </div>
-        </main>
-      </div>
-
-      {/* Floating Bottom Dock */}
-      <BottomDock
+    <>
+      <ReferenceCommandDeck
         activeTab={activeTab}
-        onSelectTab={(tab) => setActiveTab(tab)}
-        onOpenTerminalModal={() => setShowFullTerminal(true)}
+        dialogueText={dialogueText}
+        health={health}
+        intelList={intelList}
+        isSpeaking={isSpeaking}
+        mission={mission}
+        notifications={notifications}
+        operator={operator}
+        secureChannelActive={secureChannelActive}
+        onBeginMission={handleBeginMission}
+        onOpenDiagnostics={() => setShowDiagnostics(true)}
+        onOpenIntelDatabase={() => setShowIntelDatabase(true)}
+        onOpenMissionBriefing={() => setShowMissionBriefing(true)}
+        onOpenOperatorProfile={() => setShowOperatorProfile(true)}
+        onOpenTerminal={() => setShowFullTerminal(true)}
+        onSelectTab={setActiveTab}
+        onSendMessage={handleSendAureliaMessage}
+        onTerminalCommand={(command) => {
+          if (command.toLowerCase().includes('override')) handleExecuteOverride();
+        }}
+        onToggleSecureChannel={toggleSecureChannel}
       />
-
-      {/* Bottom Status Bar */}
-      <BottomStatusBar username={operator.name} />
 
       {/* MODALS & OVERLAYS */}
 
@@ -419,7 +339,7 @@ const Dashboard: React.FC = () => {
           onClose={() => setActiveTab('DASHBOARD')}
         />
       )}
-    </div>
+    </>
   );
 };
 
