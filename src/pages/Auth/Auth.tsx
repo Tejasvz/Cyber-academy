@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../services/api';
 import './Auth.css';
+import './AuthPlayable.css';
 
 const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,6 +15,12 @@ const Auth: React.FC = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
+
+  const enterTrainingDeck = () => {
+    const id = 'local-fragment';
+    const returning = localStorage.getItem(`project-veil:intro-complete:${id}`) === 'true';
+    login({ id, username: 'Fragment', level: 1, xp: 0 }, 'local-training-session', { startIntro: !returning });
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -59,6 +66,7 @@ const Auth: React.FC = () => {
             <Field icon={<LockKeyhole />} label="PASSPHRASE KEY"><input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••" type="password" required /></Field>
             <button className="auth-submit" disabled={submitting} type="submit">{submitting ? 'AUTHENTICATING...' : isLogin ? 'ENTER COMMAND DECK' : 'AUTHORIZE OPERATOR'} <ArrowRight /></button>
           </form>
+          <button className="auth-training" type="button" onClick={enterTrainingDeck}><span>OFFLINE TRAINING ACCESS</span><small>PLAY THE COMPLETE CAMPAIGN WITHOUT A SERVER</small></button>
           <footer><span>{isLogin ? 'NO OPERATOR ID?' : 'ALREADY HAVE CREDENTIALS?'}</span><button onClick={() => { setIsLogin((value) => !value); setError(''); }}>{isLogin ? 'REQUEST ACCESS' : 'RETURN TO LOGIN'}</button></footer>
         </motion.section>
       </section>

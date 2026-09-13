@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, Check, ChevronRight, CircleDot, Crosshair, Database, Eye, GitMerge, LockKeyhole, Radio, Settings, Shield, TerminalSquare, Zap } from 'lucide-react';
 import type { IntelItem, Mission, NavTab, Operator } from '../../types';
+import type { GameMission } from '../../game/gameData';
 import { sound } from '../../utils/audioSynth';
 import './ViewTabOverlay.css';
+import './GameWorkspace.css';
 
 interface ViewTabOverlayProps {
   activeTab: NavTab;
@@ -13,6 +15,10 @@ interface ViewTabOverlayProps {
   onOpenBriefing: () => void;
   onOpenTerminal: () => void;
   onLogout: () => void;
+  gameMissions: GameMission[];
+  activeMissionId: string;
+  completedMissionIds: Set<string>;
+  onSelectMission: (mission: GameMission) => void;
 }
 
 const tabs: Array<{ id: NavTab; label: string; icon: React.ElementType }> = [
@@ -33,7 +39,7 @@ const skillNodes = [
   { id: 's6', name: 'AETHER SYMBIOSIS', detail: 'Unlock shared handler protocols.', cost: 3, x: 80, y: 45 },
 ];
 
-export const ViewTabOverlay: React.FC<ViewTabOverlayProps> = ({ activeTab, intelList, mission, operator, onClose, onOpenBriefing, onOpenTerminal, onLogout }) => {
+export const ViewTabOverlay: React.FC<ViewTabOverlayProps> = ({ activeTab, intelList, mission, operator, onClose, onOpenBriefing, onOpenTerminal, onLogout, gameMissions, activeMissionId, completedMissionIds, onSelectMission }) => {
   const [view, setView] = useState<NavTab>(activeTab);
   const [selectedIntelId, setSelectedIntelId] = useState(intelList[0]?.id ?? '');
   const [unlockedSkills, setUnlockedSkills] = useState(['s1', 's2']);
@@ -62,12 +68,12 @@ export const ViewTabOverlay: React.FC<ViewTabOverlayProps> = ({ activeTab, intel
           <dl className="mission-facts"><div><dt>OBJECTIVE</dt><dd>{mission.objective}</dd></div><div><dt>ENVIRONMENT</dt><dd>{mission.location}</dd></div><div><dt>THREAT INDEX</dt><dd className="danger">{mission.threatLevel}</dd></div><div><dt>REWARD</dt><dd className="success">+{mission.rewardXP} XP</dd></div></dl>
           <button className="workspace-cta" onClick={onOpenBriefing}>OPEN MISSION BRIEFING <ChevronRight /></button>
         </section>
-        <section className="workspace-panel operation-queue"><WorkspaceHeader eyebrow="DEPLOYMENT QUEUE" status="3 OPERATIONS" />
-          {[
-            ['GHOST CIRCUIT', 'Trace a rogue signal through abandoned relay nodes.', 'AVAILABLE', 'LOW'],
-            ['SILENT ORBIT', 'Recover a damaged Aether memory partition.', 'LOCKED', 'MEDIUM'],
-            ['MIRROR FALL', 'Identify the entity mimicking handler traffic.', 'CLASSIFIED', 'CRITICAL'],
-          ].map(([name, copy, state, risk], index) => <article className="queue-item" key={name}><b>0{index + 2}</b><div><h3>{name}</h3><p>{copy}</p></div><span className={state === 'AVAILABLE' ? 'success' : ''}>{state}<small>{risk} RISK</small></span></article>)}
+        <section className="workspace-panel operation-queue"><WorkspaceHeader eyebrow="DEPLOYMENT QUEUE" status={`${completedMissionIds.size}/${gameMissions.length} COMPLETE`} />
+          {gameMissions.map((gameMission, index) => {
+            const completed = completedMissionIds.has(gameMission.id);
+            const unlocked = index === 0 || completedMissionIds.has(gameMissions[index - 1].id);
+            return <button className={`queue-item ${activeMissionId === gameMission.id ? 'active' : ''}`} key={gameMission.id} disabled={!unlocked} onClick={() => onSelectMission(gameMission)}><b>{gameMission.id}</b><div><h3>{gameMission.title.replace('OPERATION ', '')}</h3><p>{gameMission.objective}</p></div><span className={completed ? 'success' : unlocked ? 'available' : ''}>{completed ? 'COMPLETE' : unlocked ? 'AVAILABLE' : 'LOCKED'}<small>{gameMission.threat} RISK</small></span></button>;
+          })}
         </section>
         <section className="workspace-panel handler-note"><WorkspaceHeader eyebrow="HANDLER ASSESSMENT" status="AURELIA // LIVE" /><blockquote>“The outage is a symptom, Fragment. Something inside Sector Zero learned how to hide from me. I need your instincts where my sensors fail.”</blockquote></section>
       </div>

@@ -1,0 +1,107 @@
+.aurelia-3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: radial-gradient(ellipse at 50% 63%, rgba(8, 94, 180, .16), transparent 52%);
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.aurelia-3d-canvas,
+.aurelia-3d-canvas canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.aurelia-3d-canvas {
+  z-index: 1;
+  filter: drop-shadow(0 0 7px rgba(20, 210, 255, .9)) drop-shadow(0 0 22px rgba(30, 78, 255, .38));
+  transition: filter .4s, opacity .5s;
+}
+
+.aurelia-3d.is-loading .aurelia-3d-canvas { opacity: .25; }
+.aurelia-3d:hover .aurelia-3d-canvas { filter: drop-shadow(0 0 10px #2defff) drop-shadow(0 0 32px rgba(88, 30, 255, .56)); }
+.aurelia-3d.is-alert .aurelia-3d-canvas { filter: drop-shadow(0 0 12px rgba(255, 43, 105, .95)) drop-shadow(0 0 30px rgba(219, 12, 92, .55)); }
+.aurelia-3d.is-pleased .aurelia-3d-canvas { filter: drop-shadow(0 0 12px rgba(30, 255, 191, .95)) drop-shadow(0 0 30px rgba(24, 192, 183, .48)); }
+
+.aurelia-3d-particles {
+  position: absolute;
+  inset: 8% 9% 14%;
+  z-index: 2;
+  pointer-events: none;
+  opacity: .38;
+  background-image: radial-gradient(circle, #1be9ff 0 1px, transparent 1.5px), radial-gradient(circle, #a93bff 0 1px, transparent 1.4px);
+  background-size: 57px 69px, 93px 111px;
+  animation: aurelia-particle-rise 9s linear infinite;
+}
+
+.aurelia-3d-scan {
+  position: absolute;
+  z-index: 3;
+  left: 16%;
+  right: 16%;
+  height: 2px;
+  top: 22%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, #6df6ff, transparent);
+  box-shadow: 0 0 10px #26dcff;
+  opacity: .55;
+  animation: aurelia-scan 4.6s ease-in-out infinite;
+}
+
+.aurelia-3d-status {
+  position: absolute;
+  z-index: 4;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 5px 8px;
+  border: 1px solid rgba(47, 215, 255, .24);
+  background: rgba(0, 8, 22, .68);
+  color: #6edcf4;
+  font: 8px "Share Tech Mono", monospace;
+  letter-spacing: 1px;
+}
+
+.aurelia-3d-status i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #18efad;
+  box-shadow: 0 0 7px #18efad;
+}
+
+.aurelia-3d-status span { margin-left: 8px; color: #ab6fff; }
+
+.aurelia-3d-emitter {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 3%;
+  width: 210px;
+  height: 38px;
+  transform: translateX(-50%) perspective(70px) rotateX(62deg);
+  border: 1px solid #4ce8ff;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #d6ffff 2%, #20e7ff 8%, #145eea 20%, transparent 62%);
+  box-shadow: 0 0 42px #126fe9;
+}
+
+.aurelia-3d-emitter i { position: absolute; inset: 5px; border: 1px solid rgba(76, 230, 255, .66); border-radius: 50%; }
+.aurelia-3d-emitter i:nth-child(2) { inset: 11px; }
+.aurelia-3d-emitter i:nth-child(3) { inset: 17px; }
+
+@keyframes aurelia-particle-rise { to { background-position: 57px -69px, -93px -111px; } }
+@keyframes aurelia-scan { 0%, 100% { top: 20%; opacity: .15; } 50% { top: 75%; opacity: .72; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurelia-3d-particles,
+  .aurelia-3d-scan { animation: none; }
+}

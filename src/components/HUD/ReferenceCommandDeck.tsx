@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Crosshair,
   Database,
@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import type { AINotification, IntelItem, Mission, NavTab, Operator, SystemHealth } from '../../types';
+import { AureliaHologram3D } from '../AI/AureliaHologram3D';
 import './ReferenceCommandDeck.css';
 
 interface ReferenceCommandDeckProps {
@@ -92,53 +93,12 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
   const [message, setMessage] = useState('');
   const [terminalInput, setTerminalInput] = useState('');
   const [terminalLines, setTerminalLines] = useState(terminalSeed);
-  const [isBlinking, setIsBlinking] = useState(false);
-  const [isWatching, setIsWatching] = useState(false);
-  const hologramRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(formatClock()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    let blinkTimer = 0;
-    let reopenTimer = 0;
-    const scheduleBlink = () => {
-      blinkTimer = window.setTimeout(() => {
-        setIsBlinking(true);
-        reopenTimer = window.setTimeout(() => {
-          setIsBlinking(false);
-          scheduleBlink();
-        }, 130);
-      }, 2600 + Math.random() * 4200);
-    };
-    scheduleBlink();
-    return () => {
-      window.clearTimeout(blinkTimer);
-      window.clearTimeout(reopenTimer);
-    };
-  }, []);
-
-  const trackAureliaGaze = (event: React.PointerEvent<HTMLElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - bounds.left) / bounds.width - 0.5) * 2;
-    const y = ((event.clientY - bounds.top) / bounds.height - 0.5) * 2;
-    event.currentTarget.style.setProperty('--look-x', `${x * 10}px`);
-    event.currentTarget.style.setProperty('--look-y', `${y * 6}px`);
-    event.currentTarget.style.setProperty('--turn', `${x * 1.3}deg`);
-    setIsWatching(true);
-  };
-
-  const releaseAureliaGaze = () => {
-    const hologram = hologramRef.current;
-    if (hologram) {
-      hologram.style.setProperty('--look-x', '0px');
-      hologram.style.setProperty('--look-y', '0px');
-      hologram.style.setProperty('--turn', '0deg');
-    }
-    setIsWatching(false);
-  };
 
   const submitTerminal = (event: React.FormEvent) => {
     event.preventDefault();
@@ -214,11 +174,8 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
           <footer className="terminal-toolbar"><button onClick={() => setTerminalLines([])}>CLEAR</button><span /><button onClick={() => setTerminalInput('help')}>HISTORY</button><button onClick={onOpenTerminal}>MAXIMIZE</button></footer>
         </section>
 
-        <section ref={hologramRef} className={`deck-hologram is-${aureliaMood} ${isWatching ? 'is-watching' : ''}`} aria-label={`Aurelia holographic intelligence, ${aureliaMood}`} onPointerMove={trackAureliaGaze} onPointerLeave={releaseAureliaGaze} onClick={() => onSendMessage('You have my attention, Aurelia. Talk to me.')}>
-          <div className="holo-spark-field" /><div className="holo-glitch holo-glitch-one" /><div className="holo-glitch holo-glitch-two" />
-          <div className="holo-portrait-wrap"><img src={portraitForMood(aureliaMood)} alt={`Aurelia hologram — ${aureliaMood} state`} className={isSpeaking ? 'is-speaking' : ''} /><span className={`holo-blink ${isBlinking ? 'active' : ''}`} /></div>
-          <div className="holo-presence-state"><i /> {isWatching ? 'VISUAL CONTACT ESTABLISHED' : 'AURELIA // PRESENT'}</div>
-          <button className="holo-emitter" onClick={(event) => { event.stopPropagation(); onSendMessage('Status report, Aurelia.'); }} aria-label="Request status report from Aurelia" title="Ask Aurelia for a live status report"><span /><span /><span /></button>
+        <section className={`deck-hologram is-${aureliaMood}`} aria-label={`Aurelia holographic intelligence, ${aureliaMood}`}>
+          <AureliaHologram3D expression={aureliaMood} isSpeaking={isSpeaking} onInteract={() => onSendMessage('You have my attention, Aurelia. Talk to me.')} />
         </section>
 
         <section className="deck-panel notifications-panel">
@@ -267,14 +224,3 @@ const DeckMark: React.FC = () => <svg className="deck-mark" viewBox="0 0 64 64" 
 const DeckPanelHeader: React.FC<{ title: string; accent?: 'violet'; count?: number; onClose?: () => void }> = ({ title, accent, count, onClose }) => <header className={`deck-panel-header ${accent ?? ''}`}><span>{title}</span><div>{count !== undefined && <b>{count}</b>}<button onClick={onClose} aria-label={`Open ${title}`}><X /></button></div></header>;
 
 const StatusBar: React.FC<{ label: string; tone: 'cyan' | 'violet'; value: number }> = ({ label, tone, value }) => <div className={`status-bar ${tone}`}><div><span>{label}</span><b>{value}%</b></div><i><em style={{ width: `${value}%` }} /></i></div>;
-
-const portraitForMood = (mood: ReferenceCommandDeckProps['aureliaMood']) => {
-  const portraits = {
-    neutral: '/assets/portraits/aurelia.png',
-    thinking: '/assets/portraits/aurelia-thinking.png',
-    speaking: '/assets/portraits/aurelia-speaking.png',
-    alert: '/assets/portraits/aurelia-alert.png',
-    pleased: '/assets/portraits/aurelia-speaking.png',
-  };
-  return portraits[mood];
-};

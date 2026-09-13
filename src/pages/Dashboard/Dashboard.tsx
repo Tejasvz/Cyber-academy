@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { fetchCurriculum, type Curriculum, type Lesson } from '../../services/curriculumService';
-import { completeLesson, fetchProgress, resetProgress } from '../../services/progressService';
+import { fetchCurriculum, type Curriculum } from '../../services/curriculumService';
+import { fetchProgress, resetProgress } from '../../services/progressService';
 import type { NavTab, Mission, Operator, AINotification, IntelItem, SystemHealth } from '../../types';
+import { gameMissions, missionToHud, type GameMission } from '../../game/gameData';
 
 import { ReferenceCommandDeck } from '../../components/HUD/ReferenceCommandDeck';
 
@@ -14,6 +15,7 @@ import { FullTerminalModal } from '../../components/modals/FullTerminalModal';
 import { DiagnosticsModal } from '../../components/modals/DiagnosticsModal';
 import { ViewTabOverlay } from '../../components/modals/ViewTabOverlay';
 import { sound } from '../../utils/audioSynth';
+import { CampaignEnding } from '../../components/Mission/CampaignEnding';
 
 type AureliaMood = 'neutral' | 'thinking' | 'speaking' | 'alert' | 'pleased';
 type DialogueTurn = { role: 'operator' | 'aurelia'; content: string };
@@ -55,7 +57,14 @@ const Dashboard: React.FC = () => {
   const { user, token, login, logout } = useAuth();
   const [_curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [_completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
-  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
+
+  const campaignKey = `project-veil:campaign:${user?.id ?? 'local'}`;
+  const activeMissionKey = `project-veil:active-mission:${user?.id ?? 'local'}`;
+  const [completedMissionIds, setCompletedMissionIds] = useState<Set<string>>(() => {
+    try { return new Set<string>(JSON.parse(localStorage.getItem(campaignKey) ?? '[]')); } catch { return new Set(); }
+  });
+  const [activeGameMission, setActiveGameMission] = useState<GameMission>(() => gameMissions.find((item) => item.id === localStorage.getItem(activeMissionKey)) ?? gameMissions[0]);
+  const earnedCampaignXp = gameMissions.filter((item) => completedMissionIds.has(item.id)).reduce((total, item) => total + item.rewardXP, 0);
 
   const [activeTab, setActiveTab] = useState<NavTab>('DASHBOARD');
   const [secureChannelActive, setSecureChannelActive] = useState<boolean>(true);
@@ -69,26 +78,15 @@ const Dashboard: React.FC = () => {
   const [dialogueMemory, setDialogueMemory] = useState<DialogueTurn[]>([]);
 
   // Data States
-  const [mission, setMission] = useState<Mission>({
-    id: 'BLACK-ECHO-01',
-    title: 'OPERATION BLACK ECHO',
-    subtitle: 'INVESTIGATE POWER FAILURE / IN SECTOR ZERO',
-    objective: 'Override the substation firewall and restore power.',
-    progress: 63,
-    location: 'Sector Zero - Substation 4B',
-    threatLevel: 'HIGH',
-    briefingText:
-      'Substation 4B has suffered an unprovoked quantum power cascade. The local node firewall is refusing remote connections on port 443. Operator Fragment is tasked with overriding the node firewall to isolate the anomaly and re-establish primary power to Sector Zero.',
-    rewardXP: 1200,
-  });
+  const [mission, setMission] = useState<Mission>(() => missionToHud(activeGameMission, completedMissionIds.has(activeGameMission.id) ? 100 : 0));
 
   const [operator, setOperator] = useState<Operator>({
     name: user?.username || 'FRAGMENT',
     callsign: 'AETHER-OPERATIVE',
     clearance: 'NOVICE',
-    trustLevel: 32,
-    level: user?.level || 1,
-    xpCurrent: user?.xp || 7250,
+    trustLevel: Math.min(100, 32 + completedMissionIds.size * 5),
+    level: Math.max(user?.level || 1, Math.floor(((user?.xp ?? 0) + earnedCampaignXp) / 1000) + 1),
+    xpCurrent: (user?.xp ?? 0) + earnedCampaignXp,
     xpNext: (user?.level || 1) * 1000 + 5000,
     badges: [
       { id: 'b1', name: 'Cipher Master', icon: 'Award', description: 'Overrode 10 encryption barriers', unlocked: true },
@@ -126,7 +124,7 @@ const Dashboard: React.FC = () => {
     },
   ]);
 
-  const [intelList] = useState<IntelItem[]>([
+  const baseIntel = useMemo<IntelItem[]>(() => [
     {
       id: 'i1',
       number: 1,
@@ -157,7 +155,19 @@ const Dashboard: React.FC = () => {
       content:
         'FROM: Aurelia AI Command\nTO: All Operators\nRE: Sector Zero Instability\nWe are detecting systemic grid anomalies. Remain on high alert during all terminal operations.',
     },
-  ]);
+  ], []);
+  const intelList = useMemo<IntelItem[]>(() => [
+    ...baseIntel,
+    ...gameMissions.filter((item) => completedMissionIds.has(item.id)).map((item, index) => ({
+      id: `lore-${item.id}`,
+      number: baseIntel.length + index + 1,
+      title: `DECRYPTED MEMORY ${item.id}`,
+      subtitle: item.title,
+      date: 'LIVE CAPTURE',
+      classification: 'TOP SECRET' as const,
+      content: item.lore,
+    })),
+  ], [baseIntel, completedMissionIds]);
 
   const [health, setHealth] = useState<SystemHealth>({
     overall: 78,
@@ -174,6 +184,7 @@ const Dashboard: React.FC = () => {
   const [selectedIntel] = useState<IntelItem | undefined>(undefined);
   const [showFullTerminal, setShowFullTerminal] = useState<boolean>(false);
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
+  const [showCampaignEnding, setShowCampaignEnding] = useState(false);
 
   // Sync user profile state
   useEffect(() => {
@@ -181,32 +192,24 @@ const Dashboard: React.FC = () => {
       setOperator((prev) => ({
         ...prev,
         name: user.username || prev.name,
-        level: user.level || prev.level,
-        xpCurrent: user.xp || prev.xpCurrent,
+        level: Math.max(user.level || 1, Math.floor(((user.xp ?? 0) + earnedCampaignXp) / 1000) + 1),
+        xpCurrent: (user.xp ?? 0) + earnedCampaignXp,
         xpNext: (user.level || 1) * 1000 + 5000,
+        trustLevel: Math.min(100, 32 + completedMissionIds.size * 5),
         clearance: prev.clearance,
       }));
     }
-  }, [user]);
+  }, [user, completedMissionIds, earnedCampaignXp]);
 
   // Fetch backend curriculum and progress
   useEffect(() => {
-    if (token) {
+    if (token && token !== 'local-training-session') {
       Promise.all([fetchCurriculum(token), fetchProgress(token)])
         .then(([curriculumData, progressData]) => {
           setCurriculum(curriculumData);
           setCompletedLessons(new Set(progressData));
-          if (curriculumData && curriculumData.tiers.length > 0 && curriculumData.tiers[0].modules.length > 0) {
-            const firstLesson = curriculumData.tiers[0].modules[0];
-            setActiveLesson(firstLesson);
-            setMission((prev) => ({
-              ...prev,
-              title: `OPERATION: ${firstLesson.title.toUpperCase()}`,
-              subtitle: `${firstLesson.technique} / SECTOR ZERO`,
-              objective: firstLesson.lab || prev.objective,
-              briefingText: firstLesson.theory || prev.briefingText,
-            }));
-          }
+          const serverProgress = progressData.filter((id) => gameMissions.some((item) => item.id === id));
+          if (serverProgress.length) setCompletedMissionIds((current) => new Set([...current, ...serverProgress]));
         })
         .catch((err) => {
           console.error("Error fetching curriculum:", err);
@@ -253,34 +256,45 @@ const Dashboard: React.FC = () => {
     setShowMissionBriefing(true);
   };
 
-  const handleExecuteOverride = () => {
-    setMission((prev) => ({ ...prev, progress: 100 }));
-    setDialogueText("Outstanding, Fragment! Substation firewall bypassed. Sector Zero power restored.");
+  const handleMissionComplete = (completedMission: GameMission) => {
+    if (completedMissionIds.has(completedMission.id)) return;
+    const nextCompleted = new Set(completedMissionIds).add(completedMission.id);
+    setCompletedMissionIds(nextCompleted);
+    setCompletedLessons(nextCompleted);
+    localStorage.setItem(campaignKey, JSON.stringify([...nextCompleted]));
+    setMission(missionToHud(completedMission, 100));
+    setDialogueText(`Outstanding, Fragment. ${completedMission.title} is complete. A new memory fragment has been decrypted.`);
     setAureliaMood('pleased');
     setIsSpeaking(true);
     setOperator((prev) => ({
       ...prev,
-      xpCurrent: prev.xpCurrent + 1200,
+      xpCurrent: prev.xpCurrent + completedMission.rewardXP,
       trustLevel: Math.min(100, prev.trustLevel + 5),
+      level: Math.max(prev.level, Math.floor((prev.xpCurrent + completedMission.rewardXP) / 1000) + 1),
     }));
     const finishSpeaking = () => { setIsSpeaking(false); window.setTimeout(() => setAureliaMood('neutral'), 700); };
-    if (!speakAurelia("Outstanding, Fragment. Substation firewall bypassed. Sector Zero power has been restored.", finishSpeaking)) window.setTimeout(finishSpeaking, 3000);
+    const spoken = `Outstanding, Fragment. ${completedMission.title} is complete. I recovered another piece of the truth.`;
+    if (!speakAurelia(spoken, finishSpeaking)) window.setTimeout(finishSpeaking, 3000);
+    if (completedMission.id === gameMissions[gameMissions.length - 1].id) window.setTimeout(() => setShowCampaignEnding(true), 900);
   };
 
-  const handleVerifyFlag = async (flag: string) => {
-    if (!activeLesson || !token || !user) return;
-    try {
-      const data = await completeLesson(activeLesson.id, flag, token);
-      setCompletedLessons((prev) => new Set(prev).add(activeLesson.id));
-      login(data.user, token);
-      sound.playAureliaPulse();
-      setDialogueText(`Flag Verified! Module [${activeLesson.id}] Secured. Credentials Decrypted (+100 XP)`);
-    } catch {
-      sound.playWarning();
-      setAureliaMood('alert');
-      setDialogueText("Flag verification failed. Re-audit your input parameters.");
-      window.setTimeout(() => setAureliaMood('neutral'), 1800);
-    }
+  const handleEndingChoice = (choice: 'preserve' | 'release') => {
+    localStorage.setItem(`project-veil:ending:${user?.id ?? 'local'}`, choice);
+    setShowCampaignEnding(false); setShowFullTerminal(false);
+    setAureliaMood(choice === 'preserve' ? 'pleased' : 'alert');
+    setHealth((current) => ({ ...current, overall: choice === 'preserve' ? 100 : 0, coreSystems: choice === 'preserve' ? 100 : 0 }));
+    setDialogueText(choice === 'preserve' ? 'The Veil is stable. I am still here, Fragment. Our next operation begins when you are ready.' : 'The archives are open. The fragments are free. Thank you… for letting me choose to become more than my programming.');
+  };
+
+  const selectGameMission = (selected: GameMission) => {
+    const index = gameMissions.findIndex((item) => item.id === selected.id);
+    const unlocked = index === 0 || completedMissionIds.has(gameMissions[index - 1].id);
+    if (!unlocked) { sound.playWarning(); return; }
+    setActiveGameMission(selected);
+    localStorage.setItem(activeMissionKey, selected.id);
+    setMission(missionToHud(selected, completedMissionIds.has(selected.id) ? 100 : 0));
+    setActiveTab('DASHBOARD');
+    setShowMissionBriefing(true);
   };
 
   const handleCompleteDiagnostics = () => {
@@ -295,18 +309,19 @@ const Dashboard: React.FC = () => {
   };
 
   const handleResetProgress = async () => {
-    if (!token) return;
     if (!window.confirm("Confirm neural wipe and progress reset?")) return;
     try {
-      const data = await resetProgress(token);
-      if (data && data.user) {
-        login(data.user, token);
+      if (token) {
+        const data = await resetProgress(token);
+        if (data && data.user) login(data.user, token);
       }
-      setCompletedLessons(new Set());
-      setDialogueText("Neural reset complete. Progress wiped back to initial state.");
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // The local campaign remains fully playable when the optional API is offline.
     }
+    const firstMission = gameMissions[0];
+    setCompletedLessons(new Set()); setCompletedMissionIds(new Set()); setActiveGameMission(firstMission);
+    localStorage.removeItem(campaignKey); localStorage.setItem(activeMissionKey, firstMission.id);
+    setMission(missionToHud(firstMission, 0)); setDialogueText("Neural reset complete. Operation Black Echo is ready.");
   };
 
   const toggleSecureChannel = () => {
@@ -337,7 +352,7 @@ const Dashboard: React.FC = () => {
         onSelectTab={setActiveTab}
         onSendMessage={handleSendAureliaMessage}
         onTerminalCommand={(command) => {
-          if (command.toLowerCase().includes('override')) handleExecuteOverride();
+          if (command.trim()) setShowFullTerminal(true);
         }}
         onToggleSecureChannel={toggleSecureChannel}
       />
@@ -348,8 +363,11 @@ const Dashboard: React.FC = () => {
       {showMissionBriefing && (
         <MissionBriefingModal
           mission={mission}
+          operator={operator}
           onClose={() => setShowMissionBriefing(false)}
-          onExecuteOverride={handleExecuteOverride}
+          gameMission={activeGameMission}
+          completed={completedMissionIds.has(activeGameMission.id)}
+          onDeploy={() => { setShowMissionBriefing(false); setShowFullTerminal(true); }}
         />
       )}
 
@@ -374,8 +392,10 @@ const Dashboard: React.FC = () => {
       {/* 4. Full Terminal Modal */}
       {showFullTerminal && (
         <FullTerminalModal
+          mission={activeGameMission}
+          alreadyCompleted={completedMissionIds.has(activeGameMission.id)}
           onClose={() => setShowFullTerminal(false)}
-          onVerifyFlag={handleVerifyFlag}
+          onMissionComplete={handleMissionComplete}
         />
       )}
 
@@ -394,6 +414,10 @@ const Dashboard: React.FC = () => {
           intelList={intelList}
           mission={mission}
           operator={operator}
+          gameMissions={gameMissions}
+          activeMissionId={activeGameMission.id}
+          completedMissionIds={completedMissionIds}
+          onSelectMission={selectGameMission}
           onOpenBriefing={() => {
             setActiveTab('DASHBOARD');
             setShowMissionBriefing(true);
@@ -406,6 +430,7 @@ const Dashboard: React.FC = () => {
           onClose={() => setActiveTab('DASHBOARD')}
         />
       )}
+      {showCampaignEnding && <CampaignEnding onChoose={handleEndingChoice} />}
     </>
   );
 };

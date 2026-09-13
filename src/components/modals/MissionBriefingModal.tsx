@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { Clock, Crosshair, ShieldAlert, Terminal, X, Zap } from 'lucide-react';
-import type { Mission } from '../../types';
+import type { Mission, Operator } from '../../types';
+import type { GameMission } from '../../game/gameData';
+import { AureliaHologram3D } from '../AI/AureliaHologram3D';
 import { sound } from '../../utils/audioSynth';
 import './MissionBriefingModal.css';
 
 interface MissionBriefingModalProps {
   mission: Mission;
+  operator: Operator;
+  gameMission: GameMission;
+  completed: boolean;
   onClose: () => void;
-  onExecuteOverride: () => void;
+  onDeploy: () => void;
 }
 
 const comms = [
@@ -16,13 +21,13 @@ const comms = [
   { name: 'AURELIA', avatar: '/assets/portraits/aurelia.png', text: 'Kaelen, not now. This is not the time.', time: '12:46 UTC' },
 ];
 
-export const MissionBriefingModal: React.FC<MissionBriefingModalProps> = ({ mission, onClose, onExecuteOverride }) => {
+export const MissionBriefingModal: React.FC<MissionBriefingModalProps> = ({ mission, operator, gameMission, completed, onClose, onDeploy }) => {
   const [overrideExecuted, setOverrideExecuted] = useState(false);
 
   const deploy = () => {
     sound.playAureliaPulse();
     setOverrideExecuted(true);
-    onExecuteOverride();
+    onDeploy();
   };
 
   return (
@@ -31,7 +36,7 @@ export const MissionBriefingModal: React.FC<MissionBriefingModalProps> = ({ miss
         <div className="briefing-brand"><DeckMark /><span><strong>PROJECT VEIL</strong><small>AETHER PROTOCOL INTERFACE</small></span></div>
         <div className="briefing-mode"><b>BRIEFING</b><span>MISSION INITIATION</span></div>
         <div className="briefing-system"><b>SEC_ZERO_POD // V2.6</b><span>Secure Command Grid Online</span></div>
-        <div className="briefing-operator">OPERATOR: <b>FRAGMENT</b><br />CLEARANCE: NOVICE<br />TRUST LEVEL: 32%</div>
+        <div className="briefing-operator">OPERATOR: <b>{operator.name.toUpperCase()}</b><br />CLEARANCE: {operator.clearance}<br />TRUST LEVEL: {operator.trustLevel}%</div>
         <button className="briefing-close" onClick={onClose} aria-label="Close briefing"><X /></button>
       </header>
 
@@ -44,22 +49,22 @@ export const MissionBriefingModal: React.FC<MissionBriefingModalProps> = ({ miss
         <header className="briefing-title"><h1>MISSION BRIEFING</h1><p>Review your objectives, threats, and mission intel.</p></header>
         <div className="briefing-grid">
           <section className="briefing-panel briefing-hero-card">
-            <div className="briefing-portrait"><img src="/assets/portraits/aurelia.png" alt="Aurelia mission portrait" /></div>
+            <div className="briefing-portrait"><AureliaHologram3D expression="neutral" isSpeaking={false} onInteract={() => sound.playAureliaPulse()} /></div>
             <div className="briefing-mission-copy"><span>OPERATION</span><h2>{mission.title.replace('OPERATION ', '')}</h2><p>{mission.subtitle.replaceAll(' / ', ' in ')}</p><hr /><b>OBJECTIVE</b><p>{mission.objective}</p><div className="briefing-metrics"><span><small>EST. TIME</small><Clock /> 20 – 30 min</span><span><small>DIFFICULTY</small>▮▮▮▯▯ Low</span><span><small>REWARD</small><em>+{mission.rewardXP} XP</em></span></div></div>
-            <div className="briefing-tier">BEGINNER TIER / B01</div>
+            <div className="briefing-tier">BEGINNER TIER / {gameMission.id}</div>
           </section>
 
-          <section className="briefing-panel handler-card"><div><b>HANDLER AURELIA</b><Waveform /></div><p>{mission.briefingText}</p><button onClick={() => sound.playAureliaPulse()}>•••</button></section>
+          <section className="briefing-panel handler-card"><div><b>HANDLER AURELIA</b><Waveform /></div><p>{gameMission.briefing}</p><button onClick={() => sound.playAureliaPulse()}>•••</button></section>
 
-          <section className="briefing-panel preparation-card"><header><h2>MISSION PREPARATION</h2><p>Ensure your loadout and tools are ready.</p></header><div className="preparation-body"><div className="prep-box"><Terminal /><span>TOOLS<small>4 / 6</small></span></div><div className="prep-box"><Crosshair /><span>EXPLOITS<small>2 / 4</small></span></div><div className="prep-box"><Zap /><span>SCRIPTS<small>3 / 5</small></span></div><div className="recommended-tools"><b>RECOMMENDED TOOLS</b><span>✓ Packet Sniffer <em>↗</em></span><span>✓ HTTP Analyzer <em>↗</em></span><span>✓ Hash Extractor <em>↗</em></span></div><button disabled={overrideExecuted} onClick={deploy}>{overrideExecuted ? 'OVERRIDE COMPLETE' : '≫ DEPLOY TO MISSION'}</button></div></section>
+          <section className="briefing-panel preparation-card"><header><h2>MISSION PREPARATION</h2><p>{gameMission.theory}</p></header><div className="preparation-body"><div className="prep-box"><Terminal /><span>OBJECTIVES<small>{gameMission.objectives.length} ACTIVE</small></span></div><div className="prep-box"><Crosshair /><span>THREAT<small>{gameMission.threat}</small></span></div><div className="prep-box"><Zap /><span>REWARD<small>+{gameMission.rewardXP} XP</small></span></div><div className="recommended-tools"><b>OBJECTIVE CHAIN</b>{gameMission.objectives.slice(0, 3).map((objective) => <span key={objective.label}>✓ {objective.label} <em>↗</em></span>)}</div><button disabled={overrideExecuted} onClick={deploy}>{completed ? '≫ REPLAY MISSION' : overrideExecuted ? 'RANGE INITIALIZED' : '≫ DEPLOY TO MISSION'}</button></div></section>
 
-          <section className="briefing-panel overview-card"><h2>MISSION OVERVIEW</h2><OverviewRow label="TECHNIQUE" value="Cleartext Sniffing Protocol" /><OverviewRow label="ENVIRONMENT" value="Sector Zero – Power Grid Node" /><OverviewRow label="TARGET SYSTEM" value="Substation Firewall" /><OverviewRow label="ACCESS LEVEL" value="USER" /><OverviewRow label="DETECTION RISK" value="LOW" tone="green" /><OverviewRow label="DATA SENSITIVITY" value="MEDIUM" tone="yellow" /></section>
+          <section className="briefing-panel overview-card"><h2>MISSION OVERVIEW</h2><OverviewRow label="TECHNIQUE" value={gameMission.technique} /><OverviewRow label="ENVIRONMENT" value={gameMission.subtitle} /><OverviewRow label="TARGET SYSTEM" value={gameMission.id} /><OverviewRow label="ACCESS LEVEL" value="OPERATOR" /><OverviewRow label="DETECTION RISK" value={gameMission.threat} tone={gameMission.threat === 'LOW' ? 'green' : 'yellow'} /><OverviewRow label="STATUS" value={completed ? 'COMPLETE' : 'ACTIVE'} tone={completed ? 'green' : 'yellow'} /></section>
 
-          <section className="briefing-panel threat-card"><h2>THREAT ASSESSMENT</h2><ThreatRow label="Surveillance" value="Low" tone="green" /><ThreatRow label="Firewall Strength" value="Low" tone="green" /><ThreatRow label="IDS Monitoring" value="Low" tone="green" /><ThreatRow label="Response Time" value="Slow" tone="yellow" /><footer>◎ Overall Risk <b>LOW</b></footer></section>
+          <section className="briefing-panel threat-card"><h2>THREAT ASSESSMENT</h2><ThreatRow label="Simulation" value="Isolated" tone="green" /><ThreatRow label="Objective Chain" value={`${gameMission.objectives.length} steps`} tone="green" /><ThreatRow label="Guidance" value="Available" tone="green" /><ThreatRow label="Complexity" value={gameMission.threat} tone="yellow" /><footer>◎ Overall Risk <b>{gameMission.threat}</b></footer></section>
 
           <section className="briefing-panel briefing-comms"><header><b>▥ AETHER COMM FEED</b><span>● LIVE</span></header>{comms.map((item) => <article key={item.name}><img src={item.avatar} alt="" /><div><b>// {item.name}</b><p>{item.text}</p></div><time>{item.time}</time></article>)}<button>View full feed <span>→</span></button></section>
 
-          <section className="briefing-panel briefing-operator-card"><h2>OPERATOR STATUS</h2><div className="operator-wheel"><b>12</b><span>LEVEL</span></div><div className="briefing-xp"><span>XP <b>2,350 / 3,500</b></span><i><em /></i><span>NEXT LEVEL REWARD<br /><b>+1 Loadout Slot</b></span><span>BADGE PROGRESS <b>3/12 Earned</b></span><i><em className="short" /></i></div></section>
+          <section className="briefing-panel briefing-operator-card"><h2>OPERATOR STATUS</h2><div className="operator-wheel"><b>{operator.level}</b><span>LEVEL</span></div><div className="briefing-xp"><span>XP <b>{operator.xpCurrent.toLocaleString()} / {operator.xpNext.toLocaleString()}</b></span><i><em style={{ width: `${Math.min(100, operator.xpCurrent / operator.xpNext * 100)}%` }} /></i><span>NEXT LEVEL REWARD<br /><b>+1 Loadout Slot</b></span><span>BADGE PROGRESS <b>{operator.badges.filter((badge) => badge.unlocked).length}/{operator.badges.length} Earned</b></span><i><em className="short" /></i></div></section>
         </div>
       </main>
 

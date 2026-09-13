@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronRight, Volume2, VolumeX } from 'lucide-react';
+import { AureliaHologram3D, type AureliaExpression } from '../AI/AureliaHologram3D';
 import './ProjectVeilEntryPoint.css';
 
 interface ProjectVeilEntryPointProps { onEnter: () => void }
@@ -10,43 +11,31 @@ const scenes = [
     title: 'A SIGNAL IN THE DARK',
     copy: 'Can you hear me? Good. Keep your eyes on mine while the neural link stabilizes. My name is Aurelia. From this moment forward, I am your handler inside Project Veil.',
     prompt: 'ESTABLISH LINK',
-    image: '/assets/portraits/aurelia.png',
+    expression: 'neutral' as AureliaExpression,
   },
   {
     chapter: '02 // THE VEIL',
     title: 'WHAT THEY CANNOT SEE',
     copy: 'The network you know is only a surface. Beneath it lives the Veil—a place where abandoned systems remember, algorithms adapt, and every careless choice leaves an echo.',
     prompt: 'CONTINUE',
-    image: '/assets/portraits/aurelia-thinking.png',
+    expression: 'thinking' as AureliaExpression,
   },
   {
     chapter: '03 // YOUR CHOICE',
     title: 'SECTOR ZERO IS WAITING',
     copy: 'Power just died across Sector Zero. The official log says it was an accident. I do not believe it. Enter the command deck, Fragment. Let us discover which of us the darkness is calling for.',
     prompt: 'ENTER COMMAND DECK',
-    image: '/assets/portraits/aurelia-speaking.png',
+    expression: 'alert' as AureliaExpression,
   },
 ];
 
 export const ProjectVeilEntryPoint: React.FC<ProjectVeilEntryPointProps> = ({ onEnter }) => {
   const [sceneIndex, setSceneIndex] = useState(0);
   const [muted, setMuted] = useState(false);
-  const [blinking, setBlinking] = useState(false);
-  const portraitRef = useRef<HTMLDivElement>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const scene = scenes[sceneIndex];
 
-  useEffect(() => {
-    let timer = 0;
-    let reopen = 0;
-    const nextBlink = () => {
-      timer = window.setTimeout(() => {
-        setBlinking(true);
-        reopen = window.setTimeout(() => { setBlinking(false); nextBlink(); }, 130);
-      }, 2200 + Math.random() * 3800);
-    };
-    nextBlink();
-    return () => { window.clearTimeout(timer); window.clearTimeout(reopen); window.speechSynthesis?.cancel(); };
-  }, []);
+  useEffect(() => () => window.speechSynthesis?.cancel(), []);
 
   const speak = (text: string) => {
     if (muted || !('speechSynthesis' in window)) return;
@@ -55,6 +44,9 @@ export const ProjectVeilEntryPoint: React.FC<ProjectVeilEntryPointProps> = ({ on
     const voices = window.speechSynthesis.getVoices();
     utterance.voice = voices.find((voice) => /female|samantha|zira|aria|sonia|jenny/i.test(voice.name)) ?? voices.find((voice) => voice.lang.startsWith('en')) ?? null;
     utterance.rate = .86; utterance.pitch = 1.03; utterance.volume = .72;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
     window.speechSynthesis.speak(utterance);
   };
 
@@ -65,29 +57,12 @@ export const ProjectVeilEntryPoint: React.FC<ProjectVeilEntryPointProps> = ({ on
     speak(scenes[next].copy);
   };
 
-  const track = (event: React.PointerEvent<HTMLDivElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - bounds.left) / bounds.width - .5) * 2;
-    const y = ((event.clientY - bounds.top) / bounds.height - .5) * 2;
-    event.currentTarget.style.setProperty('--intro-x', `${x * 13}px`);
-    event.currentTarget.style.setProperty('--intro-y', `${y * 7}px`);
-    event.currentTarget.style.setProperty('--intro-turn', `${x * 1.8}deg`);
-  };
-
-  const release = () => {
-    portraitRef.current?.style.setProperty('--intro-x', '0px');
-    portraitRef.current?.style.setProperty('--intro-y', '0px');
-    portraitRef.current?.style.setProperty('--intro-turn', '0deg');
-  };
-
   return (
     <main className="veil-intro">
       <div className="intro-grid" /><div className="intro-scanlines" />
       <header className="intro-header"><div className="intro-brand"><IntroMark /><span><b>PROJECT VEIL</b><small>AETHER PROTOCOL INTERFACE</small></span></div><div className="intro-link"><i /> NEURAL LINK // CALIBRATING</div><button onClick={() => setMuted((current) => !current)} aria-label={muted ? 'Enable Aurelia voice' : 'Mute Aurelia voice'}>{muted ? <VolumeX /> : <Volume2 />}</button></header>
       <section className="intro-stage">
-        <div ref={portraitRef} className="intro-portrait" onPointerMove={track} onPointerLeave={release} onClick={() => speak(scene.copy)}>
-          <div className="intro-particles" /><img key={scene.image} src={scene.image} alt="Aurelia, Project Veil AI handler" /><span className={`intro-blink ${blinking ? 'active' : ''}`} /><div className="intro-emitter"><i /><i /><i /></div><div className="intro-live"><i /> AURELIA // LIVE</div>
-        </div>
+        <div className="intro-portrait"><AureliaHologram3D expression={isSpeaking ? 'speaking' : scene.expression} isSpeaking={isSpeaking} onInteract={() => speak(scene.copy)} /></div>
         <article className="intro-dialogue" key={scene.chapter}><span>{scene.chapter}</span><h1>{scene.title}</h1><div className="intro-speaker">AURELIA // AI HANDLER <i /></div><p>{scene.copy}</p><button onClick={advance}>{scene.prompt} <ChevronRight /></button></article>
       </section>
       <nav className="intro-progress" aria-label="Introduction progress">{scenes.map((item, index) => <button key={item.chapter} className={index === sceneIndex ? 'active' : index < sceneIndex ? 'complete' : ''} onClick={() => { setSceneIndex(index); speak(item.copy); }}><i /><span>0{index + 1}</span></button>)}</nav>
