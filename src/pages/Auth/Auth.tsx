@@ -1,213 +1,73 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { ArrowRight, KeyRound, LockKeyhole, Mail, Radio, UserRound } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { motion } from 'framer-motion';
 import { API_BASE_URL } from '../../services/api';
+import './Auth.css';
 
-const Auth = () => {
+const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [showLanding, setShowLanding] = useState(true);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError('');
-
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-    const payload = isLogin ? { email, password } : { username, email, password };
-
+    setSubmitting(true);
     try {
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+      const payload = isLogin ? { email, password } : { username, email, password };
       const response = await axios.post(`${API_BASE_URL}${endpoint}`, payload);
-      login(response.data.user, response.data.token);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'An error occurred. Please try again.');
+      login(response.data.user, response.data.token, { startIntro: !isLogin });
+    } catch (requestError: unknown) {
+      if (axios.isAxiosError(requestError)) setError(requestError.response?.data?.error || 'Connection to the Aether relay was interrupted.');
+      else setError('Connection to the Aether relay was interrupted.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Play interface sounds on hover/clicks
-  const playHoverTick = () => {
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(1400, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.003, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.04);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.04);
-    } catch (e) {}
-  };
-
   return (
-    <div 
-      className="min-h-screen bg-[#040406] flex items-center justify-center p-4 font-mono text-textMain overflow-hidden relative"
-      style={{
-        backgroundImage: `radial-gradient(circle, rgba(0, 240, 255, 0.05) 1px, transparent 1px), 
-                          linear-gradient(to right, rgba(0, 240, 255, 0.01) 1px, transparent 1px), 
-                          linear-gradient(to bottom, rgba(0, 240, 255, 0.01) 1px, transparent 1px)`,
-        backgroundSize: '32px 32px, 64px 64px, 64px 64px',
-      }}
-    >
-      {/* Cinematic CRT Scanline Overlays */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-30 opacity-20 mix-blend-overlay"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03))',
-          backgroundSize: '100% 4px, 6px 100%',
-        }}
-      />
+    <main className="auth-screen">
+      <div className="auth-stars" aria-hidden="true" />
+      <header className="auth-header">
+        <div className="auth-brand"><Mark /><span><b>PROJECT VEIL</b><small>AETHER PROTOCOL INTERFACE</small></span></div>
+        <div className="auth-header-status"><Radio /> SECURE AETHER RELAY <i /></div>
+      </header>
 
-      {showLanding ? (
-        <motion.div 
-          key="landing"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="text-center space-y-8 max-w-xl z-20"
-        >
-          {/* Glowing Vector Logo */}
-          <div className="relative w-28 h-28 mx-auto flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full border border-primary/20 animate-ping opacity-25" />
-            <svg 
-              className="w-24 h-24 text-primary animate-pulse" 
-              viewBox="0 0 100 100" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2.5"
-              style={{ filter: 'drop-shadow(0 0 12px rgba(0,240,255,0.4))' }}
-            >
-              <polygon points="50,10 90,80 10,80" />
-              <circle cx="50" cy="55" r="10" />
-              <path d="M50,10 L50,45" strokeDasharray="3,3" />
-            </svg>
-          </div>
-
-          <div className="space-y-3">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-widest text-shadow-neon text-primary uppercase">
-              PROJECT VEIL
-            </h1>
-            <p className="text-[10px] text-textMuted uppercase tracking-[0.3em] max-w-md mx-auto leading-relaxed">
-              Secure Cognitive Lattice Command Grid // Aether Systems Division
-            </p>
-          </div>
-
-          <div className="h-[1px] bg-primary/20 w-48 mx-auto" />
-
-          <p className="text-[10px] text-primary/80 max-w-sm mx-auto uppercase leading-relaxed tracking-wider">
-            Notice: Classified encryption protocol actively logging system telemetry. Unauthorized attempts will trigger network quarantine.
-          </p>
-
-          <div className="pt-4">
-            <motion.button
-              whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(0, 240, 255, 0.4)' }}
-              whileTap={{ scale: 0.98 }}
-              onHoverStart={playHoverTick}
-              onClick={() => { playHoverTick(); setShowLanding(false); }}
-              className="px-8 py-3.5 bg-primary/10 border border-primary text-primary font-bold text-xs uppercase tracking-widest rounded transition-all cursor-pointer shadow-[0_0_8px_rgba(0,240,255,0.15)] font-mono"
-            >
-              [ CONNECT COGNITIVE CHANNEL ]
-            </motion.button>
-          </div>
+      <section className="auth-content">
+        <motion.div className="auth-intel" initial={{ opacity: 0, x: -18 }} animate={{ opacity: 1, x: 0 }}>
+          <p className="auth-eyebrow">OPERATOR ACCESS // SECTOR ZERO</p>
+          <h1>THE VEIL<br /><em>IS WAITING.</em></h1>
+          <p className="auth-intro">A secure cyber-academy command interface for learning defensive operations, unraveling live intel, and restoring the fractured Aether grid.</p>
+          <div className="auth-signal"><span>UPLINK INTEGRITY</span><b>ENCRYPTED</b><i><em /></i></div>
+          <div className="auth-events"><p><i /> AURELIA DAEMON ONLINE</p><p><i /> SECTOR ZERO GATEWAY STABLE</p><p><i /> CLEARANCE REQUIRED</p></div>
         </motion.div>
-      ) : (
-        <motion.div 
-          key="auth-card"
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-[#09090f]/90 p-8 rounded-lg shadow-[0_0_35px_rgba(0,240,255,0.15)] w-full max-w-md border border-primary/30 backdrop-blur-md z-20"
-        >
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-shadow-neon text-primary tracking-widest uppercase">
-              {isLogin ? 'INITIALIZE OPERATOR' : 'CREATE OPERATOR IDENT'}
-            </h2>
-            <p className="text-[9px] text-textMuted uppercase mt-1 tracking-wider">
-              {isLogin ? 'Authorize interface socket credentials' : 'Register new alias on the reassembly lattice'}
-            </p>
-          </div>
 
-          {error && (
-            <div className="bg-error/10 border border-error/40 text-error px-4 py-2.5 rounded mb-5 font-mono text-[10px] uppercase tracking-wide leading-relaxed">
-              [-] CONNECTION ERROR: {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4 font-mono">
-            {!isLogin && (
-              <div>
-                <label className="block text-[10px] font-bold text-textMuted uppercase tracking-wider mb-1">1. Register Alias</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. AetherOperator"
-                  className="w-full bg-background/50 border border-primary/20 rounded px-4 py-2 focus:outline-none focus:border-primary text-primary text-xs transition-colors"
-                  required
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-[10px] font-bold text-textMuted uppercase tracking-wider mb-1">
-                {isLogin ? '1. Email Address or Alias' : '2. Email Address'}
-              </label>
-              <input
-                type={isLogin ? 'text' : 'email'}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={isLogin ? "operator@aether.org or alias" : "operator@aether.org"}
-                className="w-full bg-background/50 border border-primary/20 rounded px-4 py-2 focus:outline-none focus:border-primary text-primary text-xs transition-colors"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-textMuted uppercase tracking-wider mb-1">
-                {isLogin ? '2. Passphrase Key' : '3. Passphrase Key'}
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••••"
-                className="w-full bg-background/50 border border-primary/20 rounded px-4 py-2 focus:outline-none focus:border-primary text-primary text-xs transition-colors"
-                required
-              />
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 240, 255, 0.15)' }}
-              whileTap={{ scale: 0.98 }}
-              onHoverStart={playHoverTick}
-              type="submit"
-              className="w-full bg-primary/5 border border-primary text-primary font-bold py-2.5 px-4 rounded text-xs uppercase tracking-widest mt-6 hover:shadow-neon transition-shadow cursor-pointer"
-            >
-              {isLogin ? 'SECURE SOCKET' : 'AUTHORIZE ACCESS'}
-            </motion.button>
+        <motion.section className="auth-card" initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .12 }}>
+          <header><span className="auth-card-icon">{isLogin ? <KeyRound /> : <UserRound />}</span><div><p>{isLogin ? 'RETURNING OPERATOR' : 'NEW OPERATOR'}</p><h2>{isLogin ? 'SECURE LOGIN' : 'CREATE IDENT'}</h2></div></header>
+          <p className="auth-card-copy">{isLogin ? 'Authenticate your command credentials to resume the operation.' : 'Register an operator identity before the Project Veil initiation sequence.'}</p>
+          {error && <div className="auth-error">// {error}</div>}
+          <form onSubmit={submit}>
+            {!isLogin && <Field icon={<UserRound />} label="OPERATOR ALIAS"><input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Fragment" required /></Field>}
+            <Field icon={<Mail />} label={isLogin ? 'EMAIL OR ALIAS' : 'AETHER EMAIL'}><input value={email} onChange={(event) => setEmail(event.target.value)} placeholder={isLogin ? 'operator@aether.org' : 'operator@aether.org'} type={isLogin ? 'text' : 'email'} required /></Field>
+            <Field icon={<LockKeyhole />} label="PASSPHRASE KEY"><input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••" type="password" required /></Field>
+            <button className="auth-submit" disabled={submitting} type="submit">{submitting ? 'AUTHENTICATING...' : isLogin ? 'ENTER COMMAND DECK' : 'AUTHORIZE OPERATOR'} <ArrowRight /></button>
           </form>
-
-          <div className="mt-6 text-center border-t border-primary/10 pt-4">
-            <button
-              onClick={() => {
-                playHoverTick();
-                setIsLogin(!isLogin);
-                setError('');
-              }}
-              className="text-textMuted hover:text-primary text-[10px] uppercase tracking-wider transition-colors hover:underline underline-offset-4"
-            >
-              {isLogin ? "[ Request operator access ]" : "[ Have credentials? Connect ]"}
-            </button>
-          </div>
-        </motion.div>
-      )}
-    </div>
+          <footer><span>{isLogin ? 'NO OPERATOR ID?' : 'ALREADY HAVE CREDENTIALS?'}</span><button onClick={() => { setIsLogin((value) => !value); setError(''); }}>{isLogin ? 'REQUEST ACCESS' : 'RETURN TO LOGIN'}</button></footer>
+        </motion.section>
+      </section>
+      <footer className="auth-footer"><span>AETHER OS v2.1.7</span><span>CLASSIFIED // OPERATOR TELEMETRY ACTIVE</span><span>NODE: SEC_ZERO_POD</span></footer>
+    </main>
   );
 };
+
+const Field: React.FC<{ children: React.ReactNode; icon: React.ReactNode; label: string }> = ({ children, icon, label }) => <label className="auth-field"><span>{icon}{label}</span>{children}</label>;
+const Mark: React.FC = () => <svg viewBox="0 0 64 64" fill="none"><path d="M32 7 57 53H7L32 7Z" /><path d="m32 18 14 27H18l14-27ZM32 18v27M18 45l14-10 14 10" /></svg>;
 
 export default Auth;

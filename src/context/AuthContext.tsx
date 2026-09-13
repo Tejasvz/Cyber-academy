@@ -10,7 +10,9 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (user: User, token: string) => void;
+  introRequired: boolean;
+  login: (user: User, token: string, options?: { startIntro?: boolean }) => void;
+  completeIntro: () => void;
   logout: () => void;
 }
 
@@ -25,23 +27,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem('token');
   });
+  const [introRequired, setIntroRequired] = useState<boolean>(() => {
+    const savedUser = localStorage.getItem('user');
+    if (!savedUser) return false;
+    try {
+      const parsedUser: User = JSON.parse(savedUser);
+      return localStorage.getItem(`project-veil:intro-pending:${parsedUser.id}`) === 'true';
+    } catch {
+      return false;
+    }
+  });
 
-  const login = (userData: User, authToken: string) => {
+  const login = (userData: User, authToken: string, options?: { startIntro?: boolean }) => {
     setUser(userData);
     setToken(authToken);
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('token', authToken);
+
+    const shouldStartIntro = options?.startIntro === true;
+    setIntroRequired(shouldStartIntro);
+    if (shouldStartIntro) {
+      localStorage.setItem(`project-veil:intro-pending:${userData.id}`, 'true');
+    }
+  };
+
+  const completeIntro = () => {
+    if (!user) return;
+    localStorage.removeItem(`project-veil:intro-pending:${user.id}`);
+    localStorage.setItem(`project-veil:intro-complete:${user.id}`, 'true');
+    setIntroRequired(false);
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
+    setIntroRequired(false);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, introRequired, login, completeIntro, logout }}>
       {children}
     </AuthContext.Provider>
   );
