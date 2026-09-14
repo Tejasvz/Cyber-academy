@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import './AureliaHologram3D.css';
+import { createAureliaProjection, createFacetedFaceGeometry, normalizedMorphName } from './aureliaGeometry';
 
 export type AureliaExpression = 'neutral' | 'thinking' | 'speaking' | 'alert' | 'pleased';
 
@@ -23,7 +24,24 @@ const isMorphMesh = (object: THREE.Object3D): object is MorphMesh => {
   return Boolean(mesh.isMesh && mesh.morphTargetDictionary && mesh.morphTargetInfluences);
 };
 
-const normalizedMorphName = (name: string) => name.replace(/^.*\./, '').toLowerCase();
+function disposeScene(root: THREE.Object3D) {
+  const geometries = new Set<THREE.BufferGeometry>();
+  const materials = new Set<THREE.Material>();
+  const textures = new Set<THREE.Texture>();
+  root.traverse(object => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh && !(object as THREE.Line).isLine) return;
+    if (mesh.geometry) geometries.add(mesh.geometry);
+    for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      if (!material) continue;
+      materials.add(material);
+      for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
+    }
+  });
+  geometries.forEach(geometry => geometry.dispose());
+  materials.forEach(material => material.dispose());
+  textures.forEach(texture => texture.dispose());
+}
 
 export const AureliaHologram3D: React.FC<AureliaHologram3DProps> = ({ expression, isSpeaking, onInteract }) => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -44,25 +62,29 @@ export const AureliaHologram3D: React.FC<AureliaHologram3DProps> = ({ expression
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
+    renderer.toneMappingExposure = 1.05;
     renderer.setClearColor(0x000000, 0);
     renderer.domElement.setAttribute('aria-hidden', 'true');
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(29, 1, .01, 100);
-    camera.position.set(0, .03, 4.1);
-    scene.add(new THREE.HemisphereLight(0x67eaff, 0x461278, 2.6));
-    const keyLight = new THREE.PointLight(0x18dfff, 18, 9);
-    keyLight.position.set(-2, 2.4, 3.4);
+    camera.position.set(0, -.10, 6.7);
+    camera.lookAt(0, -.10, 0);
+    scene.add(new THREE.HemisphereLight(0x67caff, 0x060717, 1.8));
+    const keyLight = new THREE.PointLight(0x91eaff, 45, 12);
+    keyLight.position.set(2, 2.4, 3.4);
     scene.add(keyLight);
-    const rimLight = new THREE.PointLight(0xc042ff, 24, 9);
-    rimLight.position.set(2.2, .4, 1.3);
+    const rimLight = new THREE.PointLight(0x952bff, 32, 12);
+    rimLight.position.set(-2.2, .8, 1.1);
     scene.add(rimLight);
     const presenceRig = new THREE.Group();
     scene.add(presenceRig);
+    const projection = createAureliaProjection();
+    scene.add(projection);
 
     let model: THREE.Object3D | null = null;
+    const eyePivots: THREE.Object3D[] = [];
     const morphMeshes: MorphMesh[] = [];
     const timer = new THREE.Timer();
     timer.connect(document);
@@ -74,65 +96,69 @@ export const AureliaHologram3D: React.FC<AureliaHologram3DProps> = ({ expression
       .setKTX2Loader(ktx2)
       .setMeshoptDecoder(MeshoptDecoder)
       .load('/assets/models/facecap.glb', (gltf) => {
-        if (disposed) return;
+        if (disposed) { disposeScene(gltf.scene); return; }
         model = gltf.scene;
-        const bounds = new THREE.Box3().setFromObject(model);
+        for (const name of ['grp_eyeLeft', 'grp_eyeRight']) {
+          const eye = model.getObjectByName(name);
+          if (eye) { eye.rotation.set(0, 0, 0); eyePivots.push(eye); }
+        }
+        model.traverse(object => { if (isMorphMesh(object)) object.morphTargetInfluences?.fill(0); });
+        // Precise neutral bounds avoid including the extreme poses of all 52
+        // morphs in the framing (which previously made the face look tiny).
+        const bounds = new THREE.Box3().setFromObject(model, true);
         const size = bounds.getSize(new THREE.Vector3());
         const center = bounds.getCenter(new THREE.Vector3());
-        model.position.sub(center);
-        model.position.y -= size.y * .01;
-        const normalizedScale = 2.52 / Math.max(size.x, size.y);
-        model.scale.set(normalizedScale * .91, normalizedScale, normalizedScale);
+        const normalizedScale = 2.55 / size.y;
+        model.scale.set(normalizedScale * .92, normalizedScale, normalizedScale * .9);
+        model.position.set(-center.x * normalizedScale * .92, -center.y * normalizedScale + .17, -center.z * normalizedScale * .9);
+        model.updateMatrixWorld(true);
 
-        const wireSources: MorphMesh[] = [];
         model.traverse((object) => {
           if (!(object as THREE.Mesh).isMesh) return;
           const mesh = object as MorphMesh;
-          if (isMorphMesh(mesh)) morphMeshes.push(mesh);
+          if (isMorphMesh(mesh)) {
+            mesh.morphTargetInfluences?.fill(0);
+            morphMeshes.push(mesh);
+          }
           const original = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
           const originalName = original?.name?.toLowerCase() ?? '';
-          const isEye = /eye|cornea|pupil/.test(`${mesh.name} ${originalName}`.toLowerCase());
+          const isEye = /eye|cornea|pupil/.test(`${mesh.name} ${mesh.parent?.name} ${originalName}`.toLowerCase());
+          const isSkin = isMorphMesh(mesh);
           const hologramMaterial = original?.clone() ?? new THREE.MeshStandardMaterial();
           hologramMaterial.transparent = true;
-          hologramMaterial.opacity = isEye ? .82 : .72;
+          hologramMaterial.opacity = 1;
           hologramMaterial.depthWrite = true;
           hologramMaterial.blending = THREE.NormalBlending;
           if (hologramMaterial instanceof THREE.MeshStandardMaterial) {
-            hologramMaterial.color.lerp(new THREE.Color(isEye ? 0x7deaff : 0x169ed0), isEye ? .16 : .48);
+            hologramMaterial.color.lerp(new THREE.Color(isEye ? 0x7deaff : 0x258cb6), isEye ? .16 : .7);
+            if (isEye) hologramMaterial.color.set(0x285779);
+            if (isSkin) {
+              const source = mesh.geometry;
+              mesh.geometry = createFacetedFaceGeometry(source, mesh.matrixWorld);
+              source.dispose();
+              hologramMaterial.normalMap = null;
+              hologramMaterial.flatShading = true;
+              hologramMaterial.vertexColors = true;
+              hologramMaterial.color.set(0xffffff);
+              // Retain anatomical texture detail, without the scanned skin hue.
+              hologramMaterial.onBeforeCompile = shader => {
+                shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>',
+                  THREE.ShaderChunk.map_fragment.replace('diffuseColor *= sampledDiffuseColor;',
+                    'sampledDiffuseColor.rgb = vec3(dot(sampledDiffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))); diffuseColor *= sampledDiffuseColor;'));
+              };
+              hologramMaterial.customProgramCacheKey = () => 'aurelia-faceted-skin-v1';
+            }
             hologramMaterial.emissive.set(isEye ? 0x062d42 : 0x031d3d);
-            hologramMaterial.emissiveIntensity = isEye ? .35 : .7;
-            hologramMaterial.roughness = .48;
-            hologramMaterial.metalness = .12;
+            hologramMaterial.emissiveIntensity = isEye ? .15 : .2;
+            hologramMaterial.roughness = isEye ? .76 : .48;
+            hologramMaterial.metalness = isEye ? 0 : .12;
           }
           mesh.material = hologramMaterial;
-
-          if (!isEye) wireSources.push(mesh);
         });
-
-        wireSources.forEach((mesh) => {
-          const wire = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({
-              color: 0x47e8ff,
-              wireframe: true,
-              transparent: true,
-              opacity: .075,
-              blending: THREE.AdditiveBlending,
-              depthWrite: false,
-          }));
-          wire.morphTargetDictionary = mesh.morphTargetDictionary;
-          wire.morphTargetInfluences = mesh.morphTargetInfluences;
-          wire.userData.aureliaOverlay = true;
-          mesh.add(wire);
-        });
-        const hoodMaterial = new THREE.MeshBasicMaterial({ color: 0x3156c8, wireframe: true, transparent: true, opacity: .20, blending: THREE.AdditiveBlending, depthWrite: false });
-        const hood = new THREE.Mesh(new THREE.TorusGeometry(1.01, .10, 7, 56), hoodMaterial);
-        hood.scale.y = 1.24;
-        hood.position.set(0, .02, -.42);
-        hood.rotation.z = -.02;
-        const shoulders = new THREE.Mesh(new THREE.CylinderGeometry(.42, 1.22, 1.18, 22, 2, true), hoodMaterial.clone());
-        shoulders.position.set(0, -1.60, -.24);
-        presenceRig.add(hood, shoulders, model);
+        presenceRig.add(model);
         setReady(true);
       }, undefined, (error) => {
+        if (disposed) return;
         console.error('Aurelia morph rig failed to load', error);
         setReady(false);
       });
@@ -153,26 +179,39 @@ export const AureliaHologram3D: React.FC<AureliaHologram3DProps> = ({ expression
       camera.updateProjectionMatrix();
     };
 
+    const observer = new ResizeObserver(resize);
+    observer.observe(mount);
+    resize();
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let nextBlink = 2.2;
+    let blinkStarted = -10;
     const render = () => {
       animationFrame = window.requestAnimationFrame(render);
-      resize();
       timer.update();
       const time = timer.getElapsed();
       const mood = expressionRef.current;
       const speaking = speakingRef.current;
       lookRef.current.x += (targetLookRef.current.x - lookRef.current.x) * .06;
       lookRef.current.y += (targetLookRef.current.y - lookRef.current.y) * .06;
-      const blink = Math.pow(Math.max(0, Math.sin(time * 1.64)), 42);
+      if (time > nextBlink) { blinkStarted = time; nextBlink = time + 2.6 + Math.random() * 3.4; }
+      const blinkPhase = (time - blinkStarted) / .19;
+      const blink = blinkPhase < 1 ? Math.sin(Math.PI * blinkPhase) : 0;
       const jaw = speaking ? .14 + Math.abs(Math.sin(time * 8.2) * .46 + Math.sin(time * 12.7) * .14) : .018;
-      const smile = mood === 'pleased' ? .62 : speaking ? .09 : .015;
+      const smile = mood === 'pleased' ? .62 : speaking ? .09 : .035;
       const alert = mood === 'alert' ? .62 : 0;
       const thinking = mood === 'thinking' ? .46 : 0;
       const saccadeX = Math.sin(time * .83) * .055 + lookRef.current.x * .42;
       const saccadeY = Math.sin(time * .59) * .025 - lookRef.current.y * .30;
+      // Eyelid morphs alone cannot move the separate eyeballs. These pivots
+      // use the asset's native Z-up frame, before its parent conversion.
+      eyePivots.forEach(eye => {
+        eye.rotation.x = saccadeY * .35;
+        eye.rotation.z = -saccadeX * .45;
+      });
 
       morphMeshes.forEach((mesh) => {
-        setMorph(mesh, 'eyeBlinkLeft', blink, .42);
-        setMorph(mesh, 'eyeBlinkRight', blink * .96, .42);
+        setMorph(mesh, 'eyeBlinkLeft', .24 + blink * .76, .42);
+        setMorph(mesh, 'eyeBlinkRight', .24 + blink * .76, .42);
         setMorph(mesh, 'jawOpen', jaw, .34);
         setMorph(mesh, 'mouthFunnel', speaking ? jaw * .18 : 0);
         setMorph(mesh, 'mouthSmileLeft', smile);
@@ -181,8 +220,10 @@ export const AureliaHologram3D: React.FC<AureliaHologram3DProps> = ({ expression
         setMorph(mesh, 'cheekSquintRight', smile * .28);
         setMorph(mesh, 'browDownLeft', alert);
         setMorph(mesh, 'browDownRight', alert * .92);
-        setMorph(mesh, 'eyeWideLeft', alert * .32);
-        setMorph(mesh, 'eyeWideRight', alert * .32);
+        setMorph(mesh, 'eyeWideLeft', alert * .16);
+        setMorph(mesh, 'eyeWideRight', alert * .16);
+        setMorph(mesh, 'eyeSquintLeft', .28 + smile * .12);
+        setMorph(mesh, 'eyeSquintRight', .28 + smile * .12);
         setMorph(mesh, 'browOuterUpRight', thinking);
         setMorph(mesh, 'browInnerUp', thinking * .3);
         setMorph(mesh, 'mouthPucker', thinking * .16);
@@ -192,15 +233,20 @@ export const AureliaHologram3D: React.FC<AureliaHologram3DProps> = ({ expression
         setMorph(mesh, 'eyeLookInRight', Math.max(0, -saccadeX));
         setMorph(mesh, 'eyeLookUpLeft', Math.max(0, saccadeY));
         setMorph(mesh, 'eyeLookUpRight', Math.max(0, saccadeY));
-        setMorph(mesh, 'eyeLookDownLeft', Math.max(0, -saccadeY));
-        setMorph(mesh, 'eyeLookDownRight', Math.max(0, -saccadeY));
+        setMorph(mesh, 'eyeLookDownLeft', .2 + Math.max(0, -saccadeY));
+        setMorph(mesh, 'eyeLookDownRight', .2 + Math.max(0, -saccadeY));
       });
 
       if (model) {
-        presenceRig.rotation.y = lookRef.current.x * .17 + Math.sin(time * .28) * .026 + (thinking ? .10 : 0);
-        presenceRig.rotation.x = lookRef.current.y * .07 + Math.sin(time * .37) * .008;
-        presenceRig.rotation.z = Math.sin(time * .22) * .008;
-        presenceRig.position.y += (Math.sin(time * .72) * .014 - presenceRig.position.y) * .028;
+        presenceRig.rotation.y = -.13 + lookRef.current.x * .24 + (reducedMotion ? 0 : Math.sin(time * .28) * .026) + (thinking ? .10 : 0);
+        presenceRig.rotation.x = -.035 + lookRef.current.y * .07;
+        presenceRig.rotation.z = reducedMotion ? 0 : Math.sin(time * .22) * .008;
+        presenceRig.position.y = reducedMotion ? 0 : Math.sin(time * .72) * .014;
+        const fragments = projection.getObjectByName('signal-fragments');
+        if (fragments && !reducedMotion) {
+          fragments.rotation.y = Math.sin(time * .15) * .10;
+          fragments.children.forEach((shard, i) => { shard.rotation.y = i * 2.39996 + time * .12; });
+        }
       }
       renderer.render(scene, camera);
     };
@@ -208,16 +254,11 @@ export const AureliaHologram3D: React.FC<AureliaHologram3DProps> = ({ expression
 
     return () => {
       disposed = true;
+      observer.disconnect();
       window.cancelAnimationFrame(animationFrame);
       timer.disconnect();
       ktx2.dispose();
-      scene.traverse((object) => {
-        const mesh = object as THREE.Mesh;
-        if (!mesh.isMesh) return;
-        mesh.geometry?.dispose();
-        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        materials.forEach((material) => material?.dispose());
-      });
+      disposeScene(scene);
       renderer.dispose();
       renderer.domElement.remove();
     };
@@ -235,8 +276,7 @@ export const AureliaHologram3D: React.FC<AureliaHologram3DProps> = ({ expression
     <button className={`aurelia-3d is-${expression} ${ready ? 'is-ready' : 'is-loading'}`} onPointerMove={trackPointer} onPointerLeave={() => { targetLookRef.current = { x: 0, y: 0 }; }} onClick={onInteract} aria-label={`Talk to Aurelia. Current expression: ${expression}`}>
       <div className="aurelia-3d-canvas" ref={mountRef} />
       <div className="aurelia-3d-particles" /><div className="aurelia-3d-scan" />
-      <div className="aurelia-3d-status"><i /> AURELIA // {ready ? 'MORPH RIG LIVE' : 'INITIALIZING'} <span>{expression.toUpperCase()}</span></div>
-      <div className="aurelia-3d-emitter"><i /><i /><i /></div>
+      <div className="aurelia-3d-status"><i /> AURELIA // {ready ? 'NEURAL LINK ACTIVE' : 'INITIALIZING'} <span>{expression.toUpperCase()}</span></div>
     </button>
   );
 };
