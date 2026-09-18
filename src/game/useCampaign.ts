@@ -20,5 +20,21 @@ export function useCampaign(userId: string) {
     catch { setSaveError('Local save unavailable. Keep this tab open to retain this session.'); }
     setCampaign(next);
   }, [key]);
-  return { campaign, update, saveError };
+  const submitSpeedrunBenchmark = useCallback(async (missionId: string, timeSeconds: number, tracePercent: number) => {
+    const entry = { missionId, timeSeconds, tracePercent, timestamp: Date.now() };
+    try {
+      const existing = JSON.parse(localStorage.getItem(`project-veil:speedruns:${userId}`) ?? '[]');
+      localStorage.setItem(`project-veil:speedruns:${userId}`, JSON.stringify([...existing, entry]));
+      // Optional cloud leaderboard sync attempt
+      await fetch('/api/leaderboard/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+        signal: AbortSignal.timeout(3000),
+      }).catch(() => {});
+    } catch { /* Local first fallback */ }
+  }, [userId]);
+
+  return { campaign, update, saveError, submitSpeedrunBenchmark };
 }
+

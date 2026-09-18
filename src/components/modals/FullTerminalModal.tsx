@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Check, ChevronRight, Circle, Flag, Lightbulb, RotateCcw, TerminalSquare, X } from 'lucide-react';
+import { AlertTriangle, Check, ChevronRight, Circle, Flag, Folder, FileText, Lightbulb, RotateCcw, TerminalSquare, X } from 'lucide-react';
 import type { GameMission } from '../../game/gameData';
-import { executeRangeCommand, initialRangeState, type RangeState } from '../../game/terminalEngine';
+import { executeRangeCommand, getAutocompleteCandidates, getVirtualTreeForMission, initialRangeState, type RangeState } from '../../game/terminalEngine';
 import { sound } from '../../utils/audioSynth';
 import { speakAurelia } from '../../utils/aureliaVoice';
 import './FullTerminalModal.css';
@@ -20,11 +20,23 @@ interface FullTerminalModalProps {
   onNextMission?: () => void;
 }
 
+const formatSyntaxOutput = (text: string): React.ReactNode => {
+  if (text.includes('flag{')) {
+    const parts = text.split(/(flag\{[^}]+\})/g);
+    return parts.map((part, index) => part.startsWith('flag{') ? <span key={index} className="phosphor-emerald">{part}</span> : part);
+  }
+  if (/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/.test(text)) {
+    const parts = text.split(/(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)/g);
+    return parts.map((part, index) => /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/.test(part) ? <span key={index} className="phosphor-cyan">{part}</span> : part);
+  }
+  return text;
+};
+
 export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, alreadyCompleted, onClose, onMissionComplete, savedState, onStateChange, augments = [], initialCommand = '', onNextMission }) => {
   const initialLines = useMemo<ConsoleLine[]>(() => [
     { id: 1, type: 'system', text: `PROJECT VEIL RANGE // ${mission.id}` },
     { id: 2, type: 'normal', text: `${mission.title} loaded into isolated simulation.` },
-    { id: 3, type: 'normal', text: "Type 'objectives' to review the chain or 'hint' if you are blocked." },
+    { id: 3, type: 'normal', text: "Type 'objectives' to review the chain or press Tab for auto-completion." },
   ], [mission]);
   const [lines, setLines] = useState(initialLines);
   const [rangeState, setRangeState] = useState<RangeState>(savedState ?? initialRangeState());
@@ -33,6 +45,7 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [lockoutTimeLeft, setLockoutTimeLeft] = useState<number | null>(null);
+  const [treeOpen, setTreeOpen] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(10);
@@ -56,7 +69,6 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
   useEffect(() => {
     if (lockoutTimeLeft === null || lockoutTimeLeft <= 0) {
       if (lockoutTimeLeft === 0) {
-        // Reset range on timer expiry
         save(initialRangeState());
         setLines([...initialLines, { id: nextId.current++, type: 'error', text: 'LOCKOUT EXPIRED: Emergency signal lost. Range objectives reset to 0.' }]);
         setLockoutTimeLeft(null);
@@ -67,6 +79,9 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
     const timer = setInterval(() => setLockoutTimeLeft((prev) => (prev !== null ? prev - 1 : null)), 1000);
     return () => clearInterval(timer);
   }, [lockoutTimeLeft, initialLines]);
+
+  const candidates = useMemo(() => getAutocompleteCandidates(mission, input), [mission, input]);
+  const virtualTree = useMemo(() => getVirtualTreeForMission(mission, rangeState.completedSteps), [mission, rangeState.completedSteps]);
 
   const append = (items: Array<Omit<ConsoleLine, 'id'>>) => setLines((current) => [...current, ...items.map((item) => ({ ...item, id: nextId.current++ }))]);
 
@@ -118,7 +133,15 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
 
   const reset = () => { save(initialRangeState()); setLines(initialLines); setMissionComplete(alreadyCompleted); setInput(''); setHistory([]); setHistoryIndex(-1); setLockoutTimeLeft(null); sound.playDeploy(); };
 
-  const navigateHistory = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      if (candidates.length > 0) {
+        setInput(candidates[0]);
+        sound.playClick();
+      }
+      return;
+    }
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
     event.preventDefault();
     if (event.key === 'ArrowUp' && history.length) {
@@ -153,20 +176,42 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
           <p>Invalid commands raise trace (+15% standard, +8% damped). At 100%, 15s emergency window opens.</p>
           {augments.includes('analysis') && <code>{mission.objectives[rangeState.completedSteps]?.command ?? `submit ${mission.flag}`}</code>}
           {augments.includes('recovery') && <button className="range-hint" disabled={rangeState.recovered} onClick={() => setInput('recover')}>SIGNAL RECOVERY {rangeState.recovered ? '// USED' : '// READY'}</button>}
+          
+          {/* Virtual File Tree Side Drawer */}
+          <div className="range-tree-container">
+            <button className="tree-toggle" onClick={() => setTreeOpen(!treeOpen)}>
+              <Folder size={14} /> RANGE FILESYSTEM TREE <b>{treeOpen ? '▼' : '▶'}</b>
+            </button>
+            {treeOpen && (
+              <ul className="tree-node-list">
+                {virtualTree.filter(node => node.status !== 'hidden').map((node) => (
+                  <li key={node.path} className={`tree-node ${node.status}`} onClick={() => setInput(node.isDir ? `cd ${node.name}` : `cat ${node.name}`)}>
+                    {node.isDir ? <Folder size={12} className="icon-dir" /> : <FileText size={12} className="icon-file" />}
+                    <span>{node.name}</span>
+                    <small>{node.status === 'discovered' ? '[RECOVERED]' : ''}</small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </aside>
 
         <main className="range-console">
           <div className="range-console-toolbar"><span><i /> ISOLATED TRAINING ENVIRONMENT</span><div><button onClick={reset}><RotateCcw /> RESET RANGE</button><button onClick={() => setLines([])}>CLEAR</button></div></div>
           <div className="range-output" ref={scrollRef} role="log" aria-live="polite">
-            {lines.map((line) => <p key={line.id} className={line.type}>{line.text}</p>)}
+            {lines.map((line) => <p key={line.id} className={line.type}>{formatSyntaxOutput(line.text)}</p>)}
             {rangeState.completedSteps > 0 && <p className="system">Checkpoint: {rangeState.completedSteps}/{mission.objectives.length} objectives. {rangeState.discoveredFlag ? `Recovered: ${rangeState.discoveredFlag}` : 'Investigation saved.'}</p>}
             {missionComplete && <div className="range-victory"><Flag /><span><b>MISSION COMPLETE</b><small>{mission.lore}</small></span></div>}
           </div>
-          <form onSubmit={submit} className="range-input"><span>operator@{mission.id.toLowerCase()}:~$</span><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={navigateHistory} autoFocus spellCheck={false} aria-label="Terminal command" /><i /></form>
+          <form onSubmit={submit} className="range-input">
+            <span>operator@{mission.id.toLowerCase()}:~$</span>
+            <input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={handleKeyDown} autoFocus spellCheck={false} aria-label="Terminal command" />
+            {candidates.length > 0 && <small className="autocomplete-hint">Press [Tab] for: <b>{candidates[0]}</b></small>}
+            <i />
+          </form>
         </main>
         <footer className="range-footer"><span>DIRECTORY: {rangeState.currentDirectory}</span><span>COMMAND HISTORY: {history.length}</span><span>FLAG BUFFER: {rangeState.discoveredFlag ? 'CAPTURED' : 'EMPTY'}</span>{missionComplete && <button onClick={onNextMission ?? onClose}>{onNextMission ? 'NEXT OPERATION' : 'RETURN TO COMMAND DECK'} <ChevronRight /></button>}</footer>
       </div>
     </div>
   );
 };
-

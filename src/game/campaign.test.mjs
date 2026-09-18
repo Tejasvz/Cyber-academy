@@ -24,11 +24,12 @@ test('all eight missions play from first briefing through the final flag', () =>
     campaign = completeMission(campaign, mission.id);
     assert.equal(campaignXP(campaign), before, 'replay cannot farm rewards');
   }
-  assert.equal(campaign.completed.length, 8);
-  assert.equal(campaignXP(campaign), 3100);
-  assert.equal(credits(campaign), 620);
+  assert.equal(campaign.completed.length, 16);
+  assert.equal(campaignXP(campaign), 9150);
+  assert.equal(credits(campaign), 1830);
   for (const ending of ['preserve', 'release']) assert.equal(parseCampaign(JSON.stringify({ ...campaign, ending })).ending, ending);
 });
+
 test('ordering, exact commands, hints and reinspection are consistent', () => {
   const campaign = newCampaign(), mission = gameMissions[1];
   assert.equal(isUnlocked(campaign, 'B08'), false);
@@ -47,7 +48,8 @@ test('purchases are bounded, persistent, and cannot produce negative balances', 
   assert.equal(purchase(c, 'damping'), c);
   c = { ...c, completed: gameMissions.map(m => m.id) };
   for (const id of ['damping', 'recovery', 'analysis', 'archive']) c = purchase(c, id);
-  assert.equal(credits(c), 170);
+  assert.equal(credits(c), 1380);
+
   const duplicate = purchase(c, 'damping');
   assert.deepEqual(duplicate, c);
   assert.deepEqual(parseCampaign(JSON.stringify(c)).augments, c.augments);

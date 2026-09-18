@@ -47,3 +47,27 @@ export const executeRangeCommand = (mission: GameMission, command: string, state
   if (knownObjective) return { output: ['That action is valid, but the investigation chain is incomplete.', `Current objective: ${currentObjective?.label ?? 'Submit the recovered flag'}`], state, tone: 'warning' };
   return { output: [`Command not recognized in this range: ${command}`, "Type 'hint' or 'objectives' for guidance."], state, tone: 'error' };
 };
+
+export const getAutocompleteCandidates = (mission: GameMission, input: string): string[] => {
+
+  const baseCommands = ['help', 'objectives', 'hint', 'clear', 'status', 'recover', 'ls', 'ls -a', `submit ${mission.flag}`];
+  const objectiveCmds = mission.objectives.flatMap(o => [o.command, ...(o.alternatives ?? [])]);
+  const allCandidates = Array.from(new Set([...baseCommands, ...objectiveCmds]));
+  const trimmed = input.trim().toLowerCase();
+  if (!trimmed) return [];
+  return allCandidates.filter(c => c.toLowerCase().startsWith(trimmed) && c.toLowerCase() !== trimmed);
+};
+
+export const getVirtualTreeForMission = (mission: GameMission, completedSteps: number): Array<{ name: string; isDir: boolean; path: string; status: 'hidden' | 'visible' | 'discovered' }> => {
+  const nodes = [
+    { name: '~', isDir: true, path: `~/${mission.id}`, status: 'visible' as const },
+
+    { name: 'traffic_dump.pcap', isDir: false, path: '~/traffic_dump.pcap', status: 'visible' as const },
+    { name: 'archives', isDir: true, path: '~/archives', status: 'visible' as const },
+    { name: '.flag.txt', isDir: false, path: '~/archives/.flag.txt', status: completedSteps >= 2 ? 'discovered' as const : 'hidden' as const },
+    { name: 'hash.txt', isDir: false, path: '~/hash.txt', status: 'visible' as const },
+    { name: 'emails.txt', isDir: false, path: '~/emails.txt', status: 'visible' as const },
+  ];
+  return nodes;
+};
+
