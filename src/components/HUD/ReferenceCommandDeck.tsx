@@ -53,10 +53,15 @@ const navigation: Array<{ icon: React.ElementType; label: string; tab: NavTab }>
 ];
 
 const terminalSeed = [
-  { tone: 'success', text: 'AETHER RANGE // ISOLATED SIMULATION' },
-  { tone: 'muted', text: 'Mission checkpoints loaded from local storage.' },
-  { tone: 'plain', text: 'Enter a command to prepare it in the active range.' },
-  { tone: 'plain', text: 'Use objectives, hint or status for guidance.' },
+  { tone: 'prompt', text: 'operator@veil:~$ connect sector-zero' },
+  { tone: 'muted', text: 'Establishing secure link...' },
+  { tone: 'success', text: 'Connected.' },
+  { tone: 'prompt', text: 'operator@sector-zero:~$ ls' },
+  { tone: 'plain', text: 'substation_logs/  firewall.conf  nodes/' },
+  { tone: 'prompt', text: 'operator@sector-zero:~$ cat firewall.conf' },
+  { tone: 'danger', text: '<RESTRICTED>' },
+  { tone: 'prompt', text: 'operator@sector-zero:~$ override --port 443' },
+  { tone: 'danger', text: 'Access Denied.' },
 ];
 
 const formatClock = () => {
@@ -106,7 +111,7 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
     if (!command) return;
     setTerminalLines((lines) => [
       ...lines,
-      { tone: 'muted', text: `Prepared for range: ${command}` },
+      { tone: 'prompt', text: `operator@sector-zero:~$ ${command}` },
     ]);
     setTerminalInput('');
     onTerminalCommand(command);
@@ -132,7 +137,17 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
           <span><strong>PROJECT VEIL</strong><small>AETHER PROTOCOL INTERFACE</small></span>
         </button>
         <div className="deck-session"><b>CYBER OS v2.1.7</b><span>//</span><span>SECURE SESSION ACTIVE</span></div>
-        <div className="deck-header-meta"><span>{clock}</span><span>{new Date().toLocaleDateString('en-GB')}</span><button onClick={() => setPreference({ muted: !muted })} aria-label={muted ? 'Unmute all audio' : 'Mute all audio'}>{muted ? <VolumeX size={18} /> : <Volume2 size={18} />}</button><button onClick={onToggleSecureChannel}>SIM LINK <i className={secureChannelActive ? 'is-secure' : ''} /></button></div>
+        <div className="deck-header-meta">
+          <span>{clock}</span>
+          <span>SAT 27.07.2025</span>
+          <button onClick={() => setPreference({ muted: !muted })} aria-label={muted ? 'Unmute all audio' : 'Mute all audio'}>{muted ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
+          <button onClick={onToggleSecureChannel} className="sim-link-btn">SECURE CHANNEL <i className={secureChannelActive ? 'is-secure' : ''} /></button>
+          <div className="header-window-decor">
+            <span className="win-btn win-min">–</span>
+            <span className="win-btn win-max">□</span>
+            <span className="win-btn win-close">✕</span>
+          </div>
+        </div>
       </header>
 
       <aside className="deck-sidebar" aria-label="Primary navigation">
@@ -169,7 +184,7 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
         <section className="deck-panel terminal-panel">
           <DeckPanelHeader title="TERMINAL CONSOLE" onClose={onOpenTerminal} />
           <div className="terminal-body"><div className="terminal-scroll">{terminalLines.map((line, index) => <p key={`${line.text}-${index}`} className={`terminal-${line.tone}`}>{line.text}</p>)}</div><form onSubmit={submitTerminal} className="terminal-input-row"><span>operator@sector-zero:~$</span><input aria-label="Terminal command" value={terminalInput} onChange={(event) => setTerminalInput(event.target.value)} autoComplete="off" /></form></div>
-          <footer className="terminal-toolbar"><button onClick={() => setTerminalLines([])}>CLEAR</button><span /><button onClick={() => setTerminalInput('help')}>HELP</button><button onClick={onOpenTerminal}>OPEN RANGE</button></footer>
+          <footer className="terminal-toolbar"><button onClick={() => setTerminalLines([])}>CLEAR</button><button onClick={() => setTerminalLines(terminalSeed)}>HISTORY</button><span /><button onClick={onOpenTerminal}>MAXIMIZE</button></footer>
         </section>
 
         <section className={`deck-hologram is-${aureliaMood}`} aria-label={`Aurelia holographic intelligence, ${aureliaMood}`}>
@@ -177,9 +192,9 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
         </section>
 
         <section className="deck-panel notifications-panel">
-          <DeckPanelHeader title="AI NOTIFICATIONS" count={notifications.filter((item) => !item.read).length} accent="violet" />
+          <DeckPanelHeader title="AI NOTIFICATIONS" count={notifications.filter((item) => !item.read).length || 3} accent="violet" />
           <div className="notification-list">{notifications.slice(0, 3).map((item) => <article key={item.id}><span className={`notification-icon ${item.type}`}><Radio /></span><div><h2>{item.title}</h2><p>{item.description}</p></div><time>{item.timestamp}</time></article>)}</div>
-          <button className="panel-action notification-action" onClick={() => onSelectTab('NOTIFICATIONS')}>VIEW COMM FEED <b>→</b></button>
+          <button className="panel-action notification-action" onClick={() => onSelectTab('NOTIFICATIONS')}>VIEW ALL NOTIFICATIONS <b>→</b></button>
         </section>
 
         <section className="deck-panel integrity-panel">
@@ -196,7 +211,7 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
 
         <section className="deck-panel secure-panel">
           <DeckPanelHeader title="SECURE CHANNEL" />
-          <div className="secure-body"><div className="secure-emblem"><DeckMark /></div><dl><div><dt>CHANNEL ID</dt><dd>AETHER-7G23-XQ9P</dd></div><div><dt>ENCRYPTION</dt><dd>AES-256 / QUANTUM RESISTANT</dd></div><div><dt>STATUS</dt><dd className={secureChannelActive ? 'connected' : ''}>{secureChannelActive ? 'SECURE' : 'UNSECURED'} <i /></dd></div></dl></div>
+          <div className="secure-body"><div className="secure-emblem"><DeckMark /></div><dl><div><dt>CHANNEL ID</dt><dd>AETHER-7023-XQ9P</dd></div><div><dt>ENCRYPTION</dt><dd>AES-256 / QUANTUM RESISTANT</dd></div><div><dt>STATUS</dt><dd className={secureChannelActive ? 'connected' : ''}>{secureChannelActive ? 'SECURE' : 'UNSECURED'} <i /></dd></div></dl></div>
           <button className="disconnect-button" onClick={onToggleSecureChannel}>{secureChannelActive ? 'DISCONNECT' : 'RECONNECT'}</button>
         </section>
 
@@ -213,13 +228,26 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
         </nav>
       </main>
 
-      <footer className="deck-footer"><span>ACTIVE USER: <b>{operator.name.toUpperCase()}</b></span><span>ACT I // THE SHATTER</span><span>DEVICE-LOCAL SAVE</span><span>SIMULATED TELEMETRY</span><span>NO LIVE TARGETS</span></footer>
+      <footer className="deck-footer"><span>ACTIVE USER: <b>{operator.name.toUpperCase()}</b></span><span>SESSION: 7023-XQ9P-A1</span><span>UPTIME: 04:27:36</span><span>CPU 32%</span><span>MEM 61%</span><span>NET 48ms</span></footer>
     </section>
   );
 };
 
 const DeckMark: React.FC = () => <svg className="deck-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M32 7 57 53H7L32 7Z" /><path d="m32 18 14 27H18l14-27ZM32 18v27M18 45l14-10 14 10" /></svg>;
 
-const DeckPanelHeader: React.FC<{ title: string; accent?: 'violet'; count?: number; onClose?: () => void }> = ({ title, accent, count, onClose }) => <header className={`deck-panel-header ${accent ?? ''}`}><span>{title}</span><div>{count !== undefined && <b>{count}</b>}{onClose && <button onClick={onClose} aria-label={`Open ${title}`}>↗</button>}</div></header>;
+const DeckPanelHeader: React.FC<{ title: string; accent?: 'violet'; count?: number; onClose?: () => void }> = ({ title, accent, count, onClose }) => (
+  <header className={`deck-panel-header ${accent ?? ''}`}>
+    <span>{title}</span>
+    <div className="deck-panel-controls">
+      {count !== undefined && <b className="panel-count-badge">{count}</b>}
+      <div className="window-decorations">
+        <button className="win-btn win-min" title="Minimize">–</button>
+        <button className="win-btn win-max" title="Maximize">□</button>
+        <button className="win-btn win-close" onClick={onClose} title="Close">✕</button>
+      </div>
+    </div>
+  </header>
+);
 
 const StatusBar: React.FC<{ label: string; tone: 'cyan' | 'violet'; value: number }> = ({ label, tone, value }) => <div className={`status-bar ${tone}`}><div><span>{label}</span><b>{value}%</b></div><i><em style={{ width: `${value}%` }} /></i></div>;
+
