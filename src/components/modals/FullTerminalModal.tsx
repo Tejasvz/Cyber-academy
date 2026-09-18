@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronRight, Circle, Flag, Lightbulb, RotateCcw, TerminalSquare, X } from 'lucide-react';
+import { AlertTriangle, Check, ChevronRight, Circle, Flag, Lightbulb, RotateCcw, TerminalSquare, X } from 'lucide-react';
 import type { GameMission } from '../../game/gameData';
 import { executeRangeCommand, initialRangeState, type RangeState } from '../../game/terminalEngine';
 import { sound } from '../../utils/audioSynth';
+import { speakAurelia } from '../../utils/aureliaVoice';
 import './FullTerminalModal.css';
 
 interface ConsoleLine { id: number; type: 'system' | 'command' | 'normal' | 'success' | 'warning' | 'error'; text: string }
@@ -12,24 +13,60 @@ interface FullTerminalModalProps {
   alreadyCompleted: boolean;
   onClose: () => void;
   onMissionComplete: (mission: GameMission) => void;
+  savedState?: RangeState;
+  onStateChange?: (state: RangeState) => void;
+  augments?: string[];
+  initialCommand?: string;
+  onNextMission?: () => void;
 }
 
-export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, alreadyCompleted, onClose, onMissionComplete }) => {
+export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, alreadyCompleted, onClose, onMissionComplete, savedState, onStateChange, augments = [], initialCommand = '', onNextMission }) => {
   const initialLines = useMemo<ConsoleLine[]>(() => [
     { id: 1, type: 'system', text: `PROJECT VEIL RANGE // ${mission.id}` },
     { id: 2, type: 'normal', text: `${mission.title} loaded into isolated simulation.` },
     { id: 3, type: 'normal', text: "Type 'objectives' to review the chain or 'hint' if you are blocked." },
   ], [mission]);
   const [lines, setLines] = useState(initialLines);
-  const [rangeState, setRangeState] = useState<RangeState>(initialRangeState);
-  const [input, setInput] = useState('');
+  const [rangeState, setRangeState] = useState<RangeState>(savedState ?? initialRangeState());
+  const [input, setInput] = useState(initialCommand);
   const [missionComplete, setMissionComplete] = useState(alreadyCompleted);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [lockoutTimeLeft, setLockoutTimeLeft] = useState<number | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(10);
+  const save = (state: RangeState) => { setRangeState(state); onStateChange?.(state); };
+  
+  useEffect(() => { sound.setThreat('tension'); return () => sound.setThreat('exploration'); }, []);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [lines]);
+
+  // Lockout Timer countdown
+  useEffect(() => {
+    if (rangeState.trace >= 100 && lockoutTimeLeft === null) {
+      setLockoutTimeLeft(15);
+      sound.playWarning();
+      speakAurelia("Warning: Trace overload reached 100 percent. Emergency signal recovery window active for 15 seconds.", () => {});
+    } else if (rangeState.trace < 100 && lockoutTimeLeft !== null) {
+      setLockoutTimeLeft(null);
+    }
+  }, [rangeState.trace, lockoutTimeLeft]);
+
+  useEffect(() => {
+    if (lockoutTimeLeft === null || lockoutTimeLeft <= 0) {
+      if (lockoutTimeLeft === 0) {
+        // Reset range on timer expiry
+        save(initialRangeState());
+        setLines([...initialLines, { id: nextId.current++, type: 'error', text: 'LOCKOUT EXPIRED: Emergency signal lost. Range objectives reset to 0.' }]);
+        setLockoutTimeLeft(null);
+        sound.playWarning();
+      }
+      return;
+    }
+    const timer = setInterval(() => setLockoutTimeLeft((prev) => (prev !== null ? prev - 1 : null)), 1000);
+    return () => clearInterval(timer);
+  }, [lockoutTimeLeft, initialLines]);
 
   const append = (items: Array<Omit<ConsoleLine, 'id'>>) => setLines((current) => [...current, ...items.map((item) => ({ ...item, id: nextId.current++ }))]);
 
@@ -39,21 +76,47 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
     if (!command) return;
     sound.playKeypress();
     setHistory((current) => [...current, command]); setHistoryIndex(-1); setInput('');
+    
+    if (command.toLowerCase() === 'recover' && augments.includes('recovery') && !rangeState.recovered) {
+      save({ ...rangeState, trace: Math.max(0, rangeState.trace - 30), recovered: true });
+      setLockoutTimeLeft(null);
+      sound.playSuccess();
+      append([{ type: 'success', text: 'EMERGENCY RECOVERY PROTOCOL APPLIED. Trace reduced by 30%.' }]);
+      speakAurelia("Signal recovery confirmed. Trace reduced by thirty percent.", () => {});
+      return;
+    }
+
+    if (rangeState.trace >= 100) {
+      append([{ type: 'warning', text: `RANGE LOCKOUT ACTIVE: ${lockoutTimeLeft}s remaining. Type 'recover' (if equipped) or wait for range reset.` }]);
+      return;
+    }
+
     const result = executeRangeCommand(mission, command, rangeState);
     if (result.output[0] === '__CLEAR__') { setLines([]); return; }
-    setRangeState(result.state);
+    if (result.tone === 'error') {
+      const traceAdd = augments.includes('damping') ? 8 : 15;
+      result.state = { ...result.state, trace: Math.min(100, rangeState.trace + traceAdd) };
+      sound.playWarning();
+    }
+    save(result.state);
     append([{ type: 'command', text: `operator@${mission.id.toLowerCase()}:~$ ${command}` }, ...result.output.map((text) => ({ type: result.tone, text }))]);
+    
     if (command.toLowerCase().startsWith('submit ') && result.tone === 'success' && !missionComplete) {
-      setMissionComplete(true); sound.playAureliaPulse(); onMissionComplete(mission);
+      setMissionComplete(true);
+      sound.playSuccess();
+      onMissionComplete(mission);
+      speakAurelia(`Flag verified. Operation ${mission.title} completed successfully.`, () => {});
     }
   };
 
   const useHint = () => {
-    const next = mission.objectives[Math.min(rangeState.completedSteps, mission.objectives.length - 1)];
-    setInput(next?.command ?? `submit ${mission.flag}`);
+    const next = mission.objectives[rangeState.completedSteps];
+    const hintCmd = next?.command ?? `submit ${mission.flag}`;
+    setInput(hintCmd);
+    speakAurelia(`Aurelia analysis suggest: try ${hintCmd}`, () => {});
   };
 
-  const reset = () => { setRangeState(initialRangeState()); setLines(initialLines); setMissionComplete(alreadyCompleted); setInput(''); };
+  const reset = () => { save(initialRangeState()); setLines(initialLines); setMissionComplete(alreadyCompleted); setInput(''); setHistory([]); setHistoryIndex(-1); setLockoutTimeLeft(null); sound.playDeploy(); };
 
   const navigateHistory = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
@@ -70,20 +133,40 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
   return (
     <div className="range-overlay" role="dialog" aria-modal="true" aria-label={`${mission.title} cyber range`}>
       <div className="range-shell">
-        <header className="range-header"><div><TerminalSquare /><span><b>TACTICAL RANGE // {mission.id}</b><small>{mission.title}</small></span></div><div className="range-threat">THREAT SIMULATION <b>{mission.threat}</b></div><button onClick={onClose} aria-label="Close terminal"><X /></button></header>
+        <header className="range-header">
+          <div><TerminalSquare /><span><b>TACTICAL RANGE // {mission.id}</b><small>{mission.title}</small></span></div>
+          {lockoutTimeLeft !== null && (
+            <div className="range-threat" style={{ color: '#ff4d4d', borderColor: '#ff4d4d' }}>
+              <AlertTriangle /> EMERGENCY LOCKOUT: <b>{lockoutTimeLeft}s</b>
+            </div>
+          )}
+          <div className="range-threat">THREAT SIMULATION <b>{mission.threat}</b></div>
+          <button onClick={onClose} aria-label="Close terminal"><X /></button>
+        </header>
+
         <aside className="range-objectives">
           <span className="range-kicker">MISSION OBJECTIVES</span><h2>{mission.technique}</h2><p>{mission.objective}</p>
           <ol>{mission.objectives.map((objective, index) => <li key={objective.label} className={index < rangeState.completedSteps ? 'complete' : index === rangeState.completedSteps ? 'active' : ''}><span>{index < rangeState.completedSteps ? <Check /> : <Circle />}</span><div><b>{objective.label}</b><small>{index < rangeState.completedSteps ? 'VERIFIED' : index === rangeState.completedSteps ? 'ACTIVE' : 'LOCKED'}</small></div></li>)}</ol>
           <div className="range-progress"><span>CHAIN PROGRESS <b>{Math.round(rangeState.completedSteps / mission.objectives.length * 100)}%</b></span><i><em style={{ width: `${rangeState.completedSteps / mission.objectives.length * 100}%` }} /></i></div>
           <button className="range-hint" onClick={useHint}><Lightbulb /> LOAD NEXT COMMAND</button>
+          <p className={rangeState.trace >= 75 ? 'danger' : ''}>SIMULATED TRACE: {rangeState.trace}%</p>
+          <p>Invalid commands raise trace (+15% standard, +8% damped). At 100%, 15s emergency window opens.</p>
+          {augments.includes('analysis') && <code>{mission.objectives[rangeState.completedSteps]?.command ?? `submit ${mission.flag}`}</code>}
+          {augments.includes('recovery') && <button className="range-hint" disabled={rangeState.recovered} onClick={() => setInput('recover')}>SIGNAL RECOVERY {rangeState.recovered ? '// USED' : '// READY'}</button>}
         </aside>
+
         <main className="range-console">
           <div className="range-console-toolbar"><span><i /> ISOLATED TRAINING ENVIRONMENT</span><div><button onClick={reset}><RotateCcw /> RESET RANGE</button><button onClick={() => setLines([])}>CLEAR</button></div></div>
-          <div className="range-output" ref={scrollRef}>{lines.map((line) => <p key={line.id} className={line.type}>{line.text}</p>)}{missionComplete && <div className="range-victory"><Flag /><span><b>MISSION COMPLETE</b><small>{mission.lore}</small></span></div>}</div>
+          <div className="range-output" ref={scrollRef} role="log" aria-live="polite">
+            {lines.map((line) => <p key={line.id} className={line.type}>{line.text}</p>)}
+            {rangeState.completedSteps > 0 && <p className="system">Checkpoint: {rangeState.completedSteps}/{mission.objectives.length} objectives. {rangeState.discoveredFlag ? `Recovered: ${rangeState.discoveredFlag}` : 'Investigation saved.'}</p>}
+            {missionComplete && <div className="range-victory"><Flag /><span><b>MISSION COMPLETE</b><small>{mission.lore}</small></span></div>}
+          </div>
           <form onSubmit={submit} className="range-input"><span>operator@{mission.id.toLowerCase()}:~$</span><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={navigateHistory} autoFocus spellCheck={false} aria-label="Terminal command" /><i /></form>
         </main>
-        <footer className="range-footer"><span>DIRECTORY: {rangeState.currentDirectory}</span><span>COMMAND HISTORY: {history.length}</span><span>FLAG BUFFER: {rangeState.discoveredFlag ? 'CAPTURED' : 'EMPTY'}</span>{missionComplete && <button onClick={onClose}>RETURN TO COMMAND DECK <ChevronRight /></button>}</footer>
+        <footer className="range-footer"><span>DIRECTORY: {rangeState.currentDirectory}</span><span>COMMAND HISTORY: {history.length}</span><span>FLAG BUFFER: {rangeState.discoveredFlag ? 'CAPTURED' : 'EMPTY'}</span>{missionComplete && <button onClick={onNextMission ?? onClose}>{onNextMission ? 'NEXT OPERATION' : 'RETURN TO COMMAND DECK'} <ChevronRight /></button>}</footer>
       </div>
     </div>
   );
 };
+

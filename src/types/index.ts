@@ -5,6 +5,11 @@ export type NavTab =
   | 'INTEL'
   | 'CONSPIRACY'
   | 'TERMINAL'
+  | 'SANDBOX'
+  | 'DATABASE'
+  | 'UPGRADES'
+  | 'OPERATOR'
+  | 'NOTIFICATIONS'
   | 'SETTINGS';
 
 export interface Mission {

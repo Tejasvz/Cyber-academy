@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Clock, Crosshair, ShieldAlert, Terminal, X, Zap } from 'lucide-react';
-import type { Mission, Operator } from '../../types';
+import type { Mission, Operator, NavTab } from '../../types';
 import type { GameMission } from '../../game/gameData';
 import { AureliaHologram3D } from '../AI/AureliaHologram3D';
 import { sound } from '../../utils/audioSynth';
@@ -13,6 +13,7 @@ interface MissionBriefingModalProps {
   completed: boolean;
   onClose: () => void;
   onDeploy: () => void;
+  onNavigate: (view: NavTab) => void;
 }
 
 const comms = [
@@ -21,7 +22,7 @@ const comms = [
   { name: 'AURELIA', avatar: '/assets/portraits/aurelia.png', text: 'Kaelen, not now. This is not the time.', time: '12:46 UTC' },
 ];
 
-export const MissionBriefingModal: React.FC<MissionBriefingModalProps> = ({ mission, operator, gameMission, completed, onClose, onDeploy }) => {
+export const MissionBriefingModal: React.FC<MissionBriefingModalProps> = ({ mission, operator, gameMission, completed, onClose, onDeploy, onNavigate }) => {
   const [overrideExecuted, setOverrideExecuted] = useState(false);
 
   const deploy = () => {
@@ -41,7 +42,7 @@ export const MissionBriefingModal: React.FC<MissionBriefingModalProps> = ({ miss
       </header>
 
       <aside className="briefing-nav">
-        <button className="active"><Crosshair />BRIEFING</button><button><Terminal />TERMINAL</button><button><Zap />MISSIONS</button><button><ShieldAlert />INTEL</button><button><DatabaseMark />DATABASE</button><button><UserMark />OPERATOR</button><button><ShieldAlert />UPGRADES</button><button onClick={onClose}><X />CONFIG</button>
+        <button className="active" aria-current="page"><Crosshair />BRIEFING</button><button onClick={onDeploy}><Terminal />TERMINAL</button><button onClick={() => onNavigate('MISSIONS')}><Zap />MISSIONS</button><button onClick={() => onNavigate('INTEL')}><ShieldAlert />INTEL</button><button onClick={() => onNavigate('DATABASE')}><DatabaseMark />DATABASE</button><button onClick={() => onNavigate('OPERATOR')}><UserMark />OPERATOR</button><button onClick={() => onNavigate('UPGRADES')}><ShieldAlert />UPGRADES</button><button onClick={() => onNavigate('SETTINGS')}><X />CONFIG</button>
         <div className="briefing-side-status"><span>SYSTEM STATUS</span><i /><b>NOMINAL</b><small>All systems operational <em /></small></div>
       </aside>
 
@@ -62,7 +63,7 @@ export const MissionBriefingModal: React.FC<MissionBriefingModalProps> = ({ miss
 
           <section className="briefing-panel threat-card"><h2>THREAT ASSESSMENT</h2><ThreatRow label="Simulation" value="Isolated" tone="green" /><ThreatRow label="Objective Chain" value={`${gameMission.objectives.length} steps`} tone="green" /><ThreatRow label="Guidance" value="Available" tone="green" /><ThreatRow label="Complexity" value={gameMission.threat} tone="yellow" /><footer>◎ Overall Risk <b>{gameMission.threat}</b></footer></section>
 
-          <section className="briefing-panel briefing-comms"><header><b>▥ AETHER COMM FEED</b><span>● LIVE</span></header>{comms.map((item) => <article key={item.name}><img src={item.avatar} alt="" /><div><b>// {item.name}</b><p>{item.text}</p></div><time>{item.time}</time></article>)}<button>View full feed <span>→</span></button></section>
+          <section className="briefing-panel briefing-comms"><header><b>▥ AETHER COMM FEED</b><span>● ARCHIVED</span></header>{comms.map((item) => <article key={item.name}><img src={item.avatar} alt="" /><div><b>// {item.name}</b><p>{item.text}</p></div><time>{item.time}</time></article>)}<button onClick={() => onNavigate('NOTIFICATIONS')}>View full feed <span>→</span></button></section>
 
           <section className="briefing-panel briefing-operator-card"><h2>OPERATOR STATUS</h2><div className="operator-wheel"><b>{operator.level}</b><span>LEVEL</span></div><div className="briefing-xp"><span>XP <b>{operator.xpCurrent.toLocaleString()} / {operator.xpNext.toLocaleString()}</b></span><i><em style={{ width: `${Math.min(100, operator.xpCurrent / operator.xpNext * 100)}%` }} /></i><span>NEXT LEVEL REWARD<br /><b>+1 Loadout Slot</b></span><span>BADGE PROGRESS <b>{operator.badges.filter((badge) => badge.unlocked).length}/{operator.badges.length} Earned</b></span><i><em className="short" /></i></div></section>
         </div>

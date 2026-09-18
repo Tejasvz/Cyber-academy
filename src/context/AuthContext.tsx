@@ -20,8 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try { const saved = JSON.parse(localStorage.getItem('user') ?? 'null'); return saved && typeof saved.id === 'string' && typeof saved.username === 'string' && localStorage.getItem('token') ? saved : null; } catch { return null; }
   });
   
   const [token, setToken] = useState<string | null>(() => {
@@ -44,7 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('token', authToken);
 
-    const shouldStartIntro = options?.startIntro === true;
+    const shouldStartIntro = options?.startIntro === true || localStorage.getItem(`project-veil:intro-complete:${userData.id}`) !== 'true';
     setIntroRequired(shouldStartIntro);
     if (shouldStartIntro) {
       localStorage.setItem(`project-veil:intro-pending:${userData.id}`, 'true');
@@ -59,6 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    window.speechSynthesis?.cancel();
     setUser(null);
     setToken(null);
     setIntroRequired(false);

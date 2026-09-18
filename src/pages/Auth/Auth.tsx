@@ -29,7 +29,7 @@ const Auth: React.FC = () => {
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
       const payload = isLogin ? { email, password } : { username, email, password };
-      const response = await axios.post(`${API_BASE_URL}${endpoint}`, payload);
+      const response = await axios.post(`${API_BASE_URL}${endpoint}`, payload, { timeout: 8000 });
       login(response.data.user, response.data.token, { startIntro: !isLogin });
     } catch (requestError: unknown) {
       if (axios.isAxiosError(requestError)) setError(requestError.response?.data?.error || 'Connection to the Aether relay was interrupted.');

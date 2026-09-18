@@ -9,11 +9,14 @@ import {
   Settings,
   Shield,
   UserRound,
-  X,
+  TerminalSquare,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import type { AINotification, IntelItem, Mission, NavTab, Operator, SystemHealth } from '../../types';
 import { AureliaHologram3D } from '../AI/AureliaHologram3D';
 import './ReferenceCommandDeck.css';
+import { usePreferences } from '../../store/preferencesStore';
 
 interface ReferenceCommandDeckProps {
   activeTab: NavTab;
@@ -42,23 +45,18 @@ const navigation: Array<{ icon: React.ElementType; label: string; tab: NavTab }>
   { icon: Shield, label: 'DASHBOARD', tab: 'DASHBOARD' },
   { icon: Crosshair, label: 'MISSIONS', tab: 'MISSIONS' },
   { icon: Eye, label: 'INTEL', tab: 'INTEL' },
-  { icon: Database, label: 'SANDBOX', tab: 'CONSPIRACY' },
+  { icon: Database, label: 'SANDBOX', tab: 'SANDBOX' },
   { icon: GitMerge, label: 'SKILL TREE', tab: 'SKILL_TREE' },
-  { icon: Database, label: 'DATABASE', tab: 'INTEL' },
-  { icon: Radio, label: 'UPGRADES', tab: 'CONSPIRACY' },
+  { icon: Database, label: 'DATABASE', tab: 'DATABASE' },
+  { icon: Radio, label: 'UPGRADES', tab: 'UPGRADES' },
   { icon: Settings, label: 'CONFIG', tab: 'SETTINGS' },
 ];
 
 const terminalSeed = [
-  { tone: 'prompt', text: 'operator@veil:~$ connect sector-zero' },
-  { tone: 'muted', text: 'Establishing secure link...' },
-  { tone: 'success', text: 'Connected.' },
-  { tone: 'prompt', text: 'operator@sector-zero:~$ ls' },
-  { tone: 'plain', text: 'substation_logs/  firewall.conf  nodes/' },
-  { tone: 'prompt', text: 'operator@sector-zero:~$ cat firewall.conf' },
-  { tone: 'plain', text: '<RESTRICTED>' },
-  { tone: 'prompt', text: 'operator@sector-zero:~$ override --port 443' },
-  { tone: 'danger', text: 'Access Denied.' },
+  { tone: 'success', text: 'AETHER RANGE // ISOLATED SIMULATION' },
+  { tone: 'muted', text: 'Mission checkpoints loaded from local storage.' },
+  { tone: 'plain', text: 'Enter a command to prepare it in the active range.' },
+  { tone: 'plain', text: 'Use objectives, hint or status for guidance.' },
 ];
 
 const formatClock = () => {
@@ -89,6 +87,8 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
   onToggleSecureChannel,
 }) => {
   const [clock, setClock] = useState(formatClock);
+  const muted = usePreferences(state => state.muted);
+  const setPreference = usePreferences(state => state.update);
   const [composeOpen, setComposeOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [terminalInput, setTerminalInput] = useState('');
@@ -104,11 +104,9 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
     event.preventDefault();
     const command = terminalInput.trim();
     if (!command) return;
-    const isOverride = command.toLowerCase().startsWith('override');
     setTerminalLines((lines) => [
       ...lines,
-      { tone: 'prompt', text: `operator@sector-zero:~$ ${command}` },
-      { tone: isOverride ? 'success' : 'muted', text: isOverride ? 'Override signal dispatched.' : 'Command accepted.' },
+      { tone: 'muted', text: `Prepared for range: ${command}` },
     ]);
     setTerminalInput('');
     onTerminalCommand(command);
@@ -134,7 +132,7 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
           <span><strong>PROJECT VEIL</strong><small>AETHER PROTOCOL INTERFACE</small></span>
         </button>
         <div className="deck-session"><b>CYBER OS v2.1.7</b><span>//</span><span>SECURE SESSION ACTIVE</span></div>
-        <div className="deck-header-meta"><span>{clock}</span><span>SAT 27.07.2025</span><button onClick={onToggleSecureChannel}>SECURE CHANNEL <i className={secureChannelActive ? 'is-secure' : ''} /></button></div>
+        <div className="deck-header-meta"><span>{clock}</span><span>{new Date().toLocaleDateString('en-GB')}</span><button onClick={() => setPreference({ muted: !muted })} aria-label={muted ? 'Unmute all audio' : 'Mute all audio'}>{muted ? <VolumeX size={18} /> : <Volume2 size={18} />}</button><button onClick={onToggleSecureChannel}>SIM LINK <i className={secureChannelActive ? 'is-secure' : ''} /></button></div>
       </header>
 
       <aside className="deck-sidebar" aria-label="Primary navigation">
@@ -171,7 +169,7 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
         <section className="deck-panel terminal-panel">
           <DeckPanelHeader title="TERMINAL CONSOLE" onClose={onOpenTerminal} />
           <div className="terminal-body"><div className="terminal-scroll">{terminalLines.map((line, index) => <p key={`${line.text}-${index}`} className={`terminal-${line.tone}`}>{line.text}</p>)}</div><form onSubmit={submitTerminal} className="terminal-input-row"><span>operator@sector-zero:~$</span><input aria-label="Terminal command" value={terminalInput} onChange={(event) => setTerminalInput(event.target.value)} autoComplete="off" /></form></div>
-          <footer className="terminal-toolbar"><button onClick={() => setTerminalLines([])}>CLEAR</button><span /><button onClick={() => setTerminalInput('help')}>HISTORY</button><button onClick={onOpenTerminal}>MAXIMIZE</button></footer>
+          <footer className="terminal-toolbar"><button onClick={() => setTerminalLines([])}>CLEAR</button><span /><button onClick={() => setTerminalInput('help')}>HELP</button><button onClick={onOpenTerminal}>OPEN RANGE</button></footer>
         </section>
 
         <section className={`deck-hologram is-${aureliaMood}`} aria-label={`Aurelia holographic intelligence, ${aureliaMood}`}>
@@ -181,7 +179,7 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
         <section className="deck-panel notifications-panel">
           <DeckPanelHeader title="AI NOTIFICATIONS" count={notifications.filter((item) => !item.read).length} accent="violet" />
           <div className="notification-list">{notifications.slice(0, 3).map((item) => <article key={item.id}><span className={`notification-icon ${item.type}`}><Radio /></span><div><h2>{item.title}</h2><p>{item.description}</p></div><time>{item.timestamp}</time></article>)}</div>
-          <button className="panel-action notification-action" onClick={() => onSelectTab('INTEL')}>VIEW ALL NOTIFICATIONS <b>→</b></button>
+          <button className="panel-action notification-action" onClick={() => onSelectTab('NOTIFICATIONS')}>VIEW COMM FEED <b>→</b></button>
         </section>
 
         <section className="deck-panel integrity-panel">
@@ -210,17 +208,18 @@ export const ReferenceCommandDeck: React.FC<ReferenceCommandDeckProps> = ({
         </section>
 
         <nav className="deck-dock" aria-label="Quick access">
-          {navigation.slice(1, 8).map(({ icon: Icon, label, tab }, index) => <button key={`${label}-dock`} onClick={() => index === 0 ? onOpenTerminal() : onSelectTab(tab)} className={activeTab === tab ? 'active' : ''}><span><Icon /></span><small>{label === 'SKILL TREE' ? 'INTEL' : label}</small></button>)}
+          <button onClick={onOpenTerminal}><span><TerminalSquare /></span><small>TERMINAL</small></button>
+          {navigation.filter(item => ['MISSIONS', 'INTEL', 'SANDBOX', 'DATABASE', 'UPGRADES'].includes(item.tab)).map(({ icon: Icon, label, tab }) => <button key={`${label}-dock`} onClick={() => onSelectTab(tab)} className={activeTab === tab ? 'active' : ''}><span><Icon /></span><small>{label}</small></button>)}
         </nav>
       </main>
 
-      <footer className="deck-footer"><span>ACTIVE USER: <b>{operator.name.toUpperCase()}</b></span><span>SESSION: 7G23-XQ9P-A1</span><span>UPTIME: 04:27:36</span><span>CPU 32% ▮▮▮▮▯▯</span><span>MEM 61% ▮▮▮▮▯▯</span><span>NET 48ms ▮▮▮▮▮</span></footer>
+      <footer className="deck-footer"><span>ACTIVE USER: <b>{operator.name.toUpperCase()}</b></span><span>ACT I // THE SHATTER</span><span>DEVICE-LOCAL SAVE</span><span>SIMULATED TELEMETRY</span><span>NO LIVE TARGETS</span></footer>
     </section>
   );
 };
 
 const DeckMark: React.FC = () => <svg className="deck-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M32 7 57 53H7L32 7Z" /><path d="m32 18 14 27H18l14-27ZM32 18v27M18 45l14-10 14 10" /></svg>;
 
-const DeckPanelHeader: React.FC<{ title: string; accent?: 'violet'; count?: number; onClose?: () => void }> = ({ title, accent, count, onClose }) => <header className={`deck-panel-header ${accent ?? ''}`}><span>{title}</span><div>{count !== undefined && <b>{count}</b>}<button onClick={onClose} aria-label={`Open ${title}`}><X /></button></div></header>;
+const DeckPanelHeader: React.FC<{ title: string; accent?: 'violet'; count?: number; onClose?: () => void }> = ({ title, accent, count, onClose }) => <header className={`deck-panel-header ${accent ?? ''}`}><span>{title}</span><div>{count !== undefined && <b>{count}</b>}{onClose && <button onClick={onClose} aria-label={`Open ${title}`}>↗</button>}</div></header>;
 
 const StatusBar: React.FC<{ label: string; tone: 'cyan' | 'violet'; value: number }> = ({ label, tone, value }) => <div className={`status-bar ${tone}`}><div><span>{label}</span><b>{value}%</b></div><i><em style={{ width: `${value}%` }} /></i></div>;

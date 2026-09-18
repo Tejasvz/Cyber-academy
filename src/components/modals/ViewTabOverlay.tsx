@@ -1,118 +1,61 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Check, ChevronRight, CircleDot, Crosshair, Database, Eye, GitMerge, LockKeyhole, Radio, Settings, Shield, TerminalSquare, Zap } from 'lucide-react';
-import type { IntelItem, Mission, NavTab, Operator } from '../../types';
+import React, { useState } from 'react';
+import { ArrowLeft, Crosshair, Database, Eye, GitMerge, Radio, Settings, Shield, TerminalSquare, UserRound, Zap, Box, Check } from 'lucide-react';
+import type { IntelItem, Mission, NavTab, Operator, AINotification } from '../../types';
 import type { GameMission } from '../../game/gameData';
+import { augmentations, credits, isUnlocked, newCampaign, parseCampaign, purchase, type Campaign } from '../../game/campaign';
+import { usePreferences, type Preferences } from '../../store/preferencesStore';
 import { sound } from '../../utils/audioSynth';
 import './ViewTabOverlay.css';
 import './GameWorkspace.css';
 
-interface ViewTabOverlayProps {
-  activeTab: NavTab;
-  intelList: IntelItem[];
-  mission: Mission;
-  operator: Operator;
-  onClose: () => void;
-  onOpenBriefing: () => void;
-  onOpenTerminal: () => void;
-  onLogout: () => void;
-  gameMissions: GameMission[];
-  activeMissionId: string;
-  completedMissionIds: Set<string>;
-  onSelectMission: (mission: GameMission) => void;
+interface Props {
+  activeTab: NavTab; intelList: IntelItem[]; mission: Mission; operator: Operator;
+  onClose: () => void; onOpenBriefing: () => void; onOpenTerminal: () => void; onLogout: () => void;
+  gameMissions: GameMission[]; activeMissionId: string; completedMissionIds: Set<string>;
+  onSelectMission: (mission: GameMission, deploy?: boolean) => void;
+  campaign: Campaign; onUpdate: (transform: (campaign: Campaign) => Campaign) => void;
+  onNavigate: (tab: NavTab) => void; notifications: AINotification[]; onReviewEnding: () => void;
 }
-
-const tabs: Array<{ id: NavTab; label: string; icon: React.ElementType }> = [
-  { id: 'MISSIONS', label: 'MISSIONS', icon: Crosshair },
-  { id: 'INTEL', label: 'INTEL ARCHIVE', icon: Eye },
-  { id: 'SKILL_TREE', label: 'NEURAL TREE', icon: GitMerge },
-  { id: 'CONSPIRACY', label: 'AETHER MAP', icon: Database },
-  { id: 'TERMINAL', label: 'TERMINAL', icon: TerminalSquare },
+const workspaceTabs: Array<{ id: NavTab; label: string; icon: React.ElementType }> = [
+  { id: 'MISSIONS', label: 'MISSIONS', icon: Crosshair }, { id: 'SANDBOX', label: 'SANDBOX', icon: Box },
+  { id: 'TERMINAL', label: 'TERMINAL', icon: TerminalSquare }, { id: 'INTEL', label: 'INTEL', icon: Eye },
+  { id: 'DATABASE', label: 'DATABASE', icon: Database }, { id: 'SKILL_TREE', label: 'NEURAL TREE', icon: GitMerge },
+  { id: 'UPGRADES', label: 'UPGRADES', icon: Zap }, { id: 'CONSPIRACY', label: 'EVIDENCE MAP', icon: Radio },
+  { id: 'OPERATOR', label: 'OPERATOR', icon: UserRound }, { id: 'NOTIFICATIONS', label: 'COMM FEED', icon: Radio },
   { id: 'SETTINGS', label: 'CONFIG', icon: Settings },
 ];
 
-const skillNodes = [
-  { id: 's1', name: 'CIPHER SIGHT', detail: 'Expose weak encryption signatures.', cost: 0, x: 14, y: 45 },
-  { id: 's2', name: 'PACKET GHOST', detail: 'Reduce trace accumulation by 18%.', cost: 0, x: 34, y: 25 },
-  { id: 's3', name: 'NEURAL OVERCLOCK', detail: 'Faster analysis from Aurelia.', cost: 1, x: 34, y: 66 },
-  { id: 's4', name: 'QUANTUM SHIELD', detail: 'Absorb one critical system alert.', cost: 2, x: 57, y: 24 },
-  { id: 's5', name: 'DEEP SCAN', detail: 'Reveal classified intel fragments.', cost: 2, x: 57, y: 66 },
-  { id: 's6', name: 'AETHER SYMBIOSIS', detail: 'Unlock shared handler protocols.', cost: 3, x: 80, y: 45 },
-];
-
-export const ViewTabOverlay: React.FC<ViewTabOverlayProps> = ({ activeTab, intelList, mission, operator, onClose, onOpenBriefing, onOpenTerminal, onLogout, gameMissions, activeMissionId, completedMissionIds, onSelectMission }) => {
-  const [view, setView] = useState<NavTab>(activeTab);
-  const [selectedIntelId, setSelectedIntelId] = useState(intelList[0]?.id ?? '');
-  const [unlockedSkills, setUnlockedSkills] = useState(['s1', 's2']);
-  const [selectedSkill, setSelectedSkill] = useState('s1');
-  const [skillPoints, setSkillPoints] = useState(4);
-  const [selectedNode, setSelectedNode] = useState('GRID_4B');
-  const [settings, setSettings] = useState({ synth: true, voice: true, scanlines: true, reducedMotion: false });
-  const selectedIntel = intelList.find((item) => item.id === selectedIntelId) ?? intelList[0];
-  const selectedSkillData = skillNodes.find((node) => node.id === selectedSkill) ?? skillNodes[0];
-  const title = useMemo(() => tabs.find((tab) => tab.id === view)?.label ?? 'WORKSPACE', [view]);
-
-  const unlockSkill = () => {
-    if (unlockedSkills.includes(selectedSkillData.id) || skillPoints < selectedSkillData.cost) return;
-    sound.playAureliaPulse();
-    setUnlockedSkills((current) => [...current, selectedSkillData.id]);
-    setSkillPoints((current) => current - selectedSkillData.cost);
+export const ViewTabOverlay: React.FC<Props> = (props) => {
+  const { activeTab: view, campaign, onUpdate, gameMissions, mission, operator, onNavigate } = props;
+  const prefs = usePreferences();
+  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState('field-guide');
+  const [feedback, setFeedback] = useState('');
+  const title = workspaceTabs.find(t => t.id === view)?.label ?? 'COMMAND';
+  const active = gameMissions.find(m => m.id === campaign.active)!;
+  const selectedIntel = props.intelList.find(i => i.id === selectedId) ?? props.intelList[0];
+  const archive = gameMissions.filter(m => isUnlocked(campaign, m.id) && `${m.title} ${m.technique} ${m.theory}`.toLowerCase().includes(query.toLowerCase()));
+  const buy = (id: string) => { onUpdate(current => purchase(current, id)); sound.playSuccess(); setFeedback('Augmentation installed. Its effect is active in the range.'); };
+  const downloadSave = () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(campaign, null, 2)], { type: 'application/json' }));
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'project-veil-campaign.json'; anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-
-  const renderWorkspace = () => {
-    if (view === 'MISSIONS') return (
-      <div className="workspace-grid missions-workspace">
-        <section className="workspace-panel primary-mission-card">
-          <div className="mission-watermark"><Shield /></div><span className="workspace-kicker">ACTIVE OPERATION // B01</span>
-          <h1>{mission.title}</h1><p className="mission-subtitle">{mission.subtitle.replaceAll(' / ', ' · ')}</p>
-          <div className="mission-meter"><i><b style={{ width: `${mission.progress}%` }} /></i><strong>{mission.progress}%</strong></div>
-          <dl className="mission-facts"><div><dt>OBJECTIVE</dt><dd>{mission.objective}</dd></div><div><dt>ENVIRONMENT</dt><dd>{mission.location}</dd></div><div><dt>THREAT INDEX</dt><dd className="danger">{mission.threatLevel}</dd></div><div><dt>REWARD</dt><dd className="success">+{mission.rewardXP} XP</dd></div></dl>
-          <button className="workspace-cta" onClick={onOpenBriefing}>OPEN MISSION BRIEFING <ChevronRight /></button>
-        </section>
-        <section className="workspace-panel operation-queue"><WorkspaceHeader eyebrow="DEPLOYMENT QUEUE" status={`${completedMissionIds.size}/${gameMissions.length} COMPLETE`} />
-          {gameMissions.map((gameMission, index) => {
-            const completed = completedMissionIds.has(gameMission.id);
-            const unlocked = index === 0 || completedMissionIds.has(gameMissions[index - 1].id);
-            return <button className={`queue-item ${activeMissionId === gameMission.id ? 'active' : ''}`} key={gameMission.id} disabled={!unlocked} onClick={() => onSelectMission(gameMission)}><b>{gameMission.id}</b><div><h3>{gameMission.title.replace('OPERATION ', '')}</h3><p>{gameMission.objective}</p></div><span className={completed ? 'success' : unlocked ? 'available' : ''}>{completed ? 'COMPLETE' : unlocked ? 'AVAILABLE' : 'LOCKED'}<small>{gameMission.threat} RISK</small></span></button>;
-          })}
-        </section>
-        <section className="workspace-panel handler-note"><WorkspaceHeader eyebrow="HANDLER ASSESSMENT" status="AURELIA // LIVE" /><blockquote>“The outage is a symptom, Fragment. Something inside Sector Zero learned how to hide from me. I need your instincts where my sensors fail.”</blockquote></section>
-      </div>
-    );
-
-    if (view === 'INTEL') return (
-      <div className="workspace-grid intel-workspace">
-        <section className="workspace-panel intel-index"><WorkspaceHeader eyebrow="DECRYPTED RECORDS" status={`${intelList.length} FILES`} />{intelList.map((item) => <button key={item.id} className={selectedIntel?.id === item.id ? 'active' : ''} onClick={() => setSelectedIntelId(item.id)}><span>{String(item.number).padStart(2, '0')}</span><div><b>{item.title}</b><small>{item.subtitle}</small></div><i>{item.classification}</i></button>)}</section>
-        <section className="workspace-panel intel-reader"><div className="intel-reader-head"><span>FILE // {selectedIntel?.id.toUpperCase()}</span><b>{selectedIntel?.classification}</b></div><div className="intel-schematic"><div className="schematic-orbit" /><Shield /><span>NODE 4B</span></div><h1>{selectedIntel?.title}</h1><p className="intel-copy">{selectedIntel?.content}</p><footer><span>CAPTURED {selectedIntel?.date}</span><span>HASH 7E3A-99F2-0C4D</span><span className="success">DECRYPTED</span></footer></section>
-      </div>
-    );
-
-    if (view === 'SKILL_TREE') return (
-      <div className="workspace-grid skill-workspace">
-        <section className="workspace-panel skill-map"><div className="skill-map-meta"><span>NEURAL CAPACITY</span><b>{skillPoints} POINTS AVAILABLE</b></div><svg className="skill-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M14 45 L34 25 L57 24 L80 45 M14 45 L34 66 L57 66 L80 45 M34 25 L57 66 M34 66 L57 24" /></svg>{skillNodes.map((node) => { const unlocked = unlockedSkills.includes(node.id); return <button key={node.id} style={{ left: `${node.x}%`, top: `${node.y}%` }} className={`skill-node ${unlocked ? 'unlocked' : ''} ${selectedSkill === node.id ? 'selected' : ''}`} onClick={() => setSelectedSkill(node.id)}><span>{unlocked ? <Check /> : <LockKeyhole />}</span><small>{node.name}</small></button>; })}</section>
-        <section className="workspace-panel skill-detail"><span className="workspace-kicker">NEURAL AUGMENT // {selectedSkillData.id.toUpperCase()}</span><h1>{selectedSkillData.name}</h1><p>{selectedSkillData.detail}</p><dl><div><dt>COST</dt><dd>{selectedSkillData.cost || 'CORE'} POINTS</dd></div><div><dt>STATE</dt><dd className={unlockedSkills.includes(selectedSkillData.id) ? 'success' : ''}>{unlockedSkills.includes(selectedSkillData.id) ? 'SYNCHRONIZED' : 'DORMANT'}</dd></div></dl><button className="workspace-cta" disabled={unlockedSkills.includes(selectedSkillData.id) || skillPoints < selectedSkillData.cost} onClick={unlockSkill}>{unlockedSkills.includes(selectedSkillData.id) ? 'NODE ONLINE' : 'SYNCHRONIZE NODE'} <Zap /></button></section>
-      </div>
-    );
-
-    if (view === 'CONSPIRACY') {
-      const nodes = [
-        { id: 'GRID_4B', label: 'GRID NODE 4B', x: 18, y: 25, copy: 'Initial cascade origin. Three telemetry frames are missing.' },
-        { id: 'MIRROR', label: 'MIRROR SIGNAL', x: 53, y: 18, copy: 'A signal carrying Aurelia’s own cryptographic signature.' },
-        { id: 'AURELIA', label: 'AURELIA CORE', x: 76, y: 47, copy: 'Handler memory partition accessed 11 seconds before failure.' },
-        { id: 'GHOST', label: 'GHOST OPERATOR', x: 42, y: 71, copy: 'Unknown operator credentials accepted by a retired node.' },
-        { id: 'VOID', label: 'VOID GATE', x: 12, y: 73, copy: 'No physical record. Appears in every corrupted log.' },
-      ];
-      const active = nodes.find((node) => node.id === selectedNode) ?? nodes[0];
-      return <div className="workspace-grid conspiracy-workspace"><section className="workspace-panel evidence-map"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M18 25 L53 18 L76 47 L42 71 L12 73 Z M18 25 L42 71 M53 18 L42 71 M12 73 L76 47" /></svg>{nodes.map((node) => <button key={node.id} style={{ left: `${node.x}%`, top: `${node.y}%` }} className={selectedNode === node.id ? 'active' : ''} onClick={() => setSelectedNode(node.id)}><CircleDot /><span>{node.label}</span></button>)}</section><section className="workspace-panel evidence-detail"><WorkspaceHeader eyebrow="CORRELATION NODE" status="LIVE ANALYSIS" /><Radio className="evidence-pulse" /><h1>{active.label}</h1><p>{active.copy}</p><dl><div><dt>CONFIDENCE</dt><dd>87%</dd></div><div><dt>LINKS</dt><dd>04 ACTIVE</dd></div><div><dt>ACCESS</dt><dd className="danger">RESTRICTED</dd></div></dl><div className="aurelia-whisper">AURELIA: “Some memories feel like mine. That does not mean they belong to me.”</div></section></div>;
-    }
-
-    if (view === 'TERMINAL') return <div className="workspace-grid terminal-workspace"><section className="workspace-panel terminal-preview"><WorkspaceHeader eyebrow="AETHER SHELL" status="ENCRYPTED TUNNEL ACTIVE" /><div className="terminal-transcript"><span>operator@veil:~$ <b>trace --origin GRID_4B</b></span><p>Routing through sector-zero relay...</p><p>3 nodes resolved. 1 signature masked.</p><span>operator@veil:~$ <b>inspect --signal MIRROR</b></span><p className="danger">ACCESS REQUIRES DIRECT NEURAL LINK.</p><span className="cursor-line">operator@veil:~$ <i /></span></div></section><section className="workspace-panel terminal-launch"><TerminalSquare /><span className="workspace-kicker">FULL SCREEN MODULE</span><h1>SECURE TERMINAL</h1><p>Open the operational shell to execute training commands, inspect files, and submit mission flags.</p><button className="workspace-cta" onClick={onOpenTerminal}>MAXIMIZE TERMINAL <ChevronRight /></button></section></div>;
-
-    return <div className="workspace-grid config-workspace"><section className="workspace-panel config-panel"><WorkspaceHeader eyebrow="SENSORY INTERFACE" status="LOCAL PROFILE" />{(Object.keys(settings) as Array<keyof typeof settings>).map((key) => <button key={key} onClick={() => { sound.playClick(); setSettings((current) => ({ ...current, [key]: !current[key] })); }}><div><b>{key.replace(/([A-Z])/g, ' $1').toUpperCase()}</b><small>{settingDescription(key)}</small></div><span className={settings[key] ? 'on' : ''}><i /></span></button>)}</section><section className="workspace-panel identity-panel"><WorkspaceHeader eyebrow="OPERATOR LINK" status="VERIFIED" /><div className="identity-sigil"><Shield /></div><h1>{operator.name.toUpperCase()}</h1><p>{operator.callsign}</p><dl><div><dt>CLEARANCE</dt><dd>{operator.clearance}</dd></div><div><dt>TRUST</dt><dd>{operator.trustLevel}%</dd></div><div><dt>NEURAL LEVEL</dt><dd>{operator.level}</dd></div></dl><button className="workspace-cta" onClick={onLogout}>END SECURE SESSION</button></section></div>;
+  const render = () => {
+    if (view === 'MISSIONS' || view === 'SANDBOX') return <div className="workspace-grid missions-workspace">
+      <section className="workspace-panel primary-mission-card"><span className="workspace-kicker">{view === 'SANDBOX' ? 'ISOLATED CYBER RANGE' : 'ACTIVE OPERATION'} // {mission.id}</span><h1>{mission.title}</h1><p>{mission.objective}</p><div className="mission-meter"><i><b style={{ width: `${mission.progress}%` }} /></i><strong>{mission.progress}%</strong></div><dl className="mission-facts"><div><dt>TECHNIQUE</dt><dd>{active.technique}</dd></div><div><dt>REWARD</dt><dd>+{active.rewardXP} XP / +{active.rewardXP / 5} CREDITS</dd></div><div><dt>CHECKPOINT</dt><dd>{campaign.ranges[active.id]?.completedSteps ?? 0} / {active.objectives.length}</dd></div><div><dt>TRACE</dt><dd>{campaign.ranges[active.id]?.trace ?? 0}%</dd></div></dl><button className="workspace-cta" onClick={view === 'SANDBOX' ? props.onOpenTerminal : props.onOpenBriefing}>{view === 'SANDBOX' ? 'RESUME RANGE' : 'OPEN BRIEFING'} →</button><p className="module-note">Every command runs in a simulation. No scans or attacks leave your browser. Replays never award duplicate XP or credits.</p></section>
+      <section className="workspace-panel operation-queue"><PanelHeader title={view === 'SANDBOX' ? 'AVAILABLE RANGE INSTANCES' : 'CAMPAIGN // ACT I'} meta={`${campaign.completed.length} / 8 VERIFIED`} />{gameMissions.map(m => <button className={`queue-item ${campaign.active === m.id ? 'active' : ''}`} key={m.id} disabled={!isUnlocked(campaign, m.id)} onClick={() => props.onSelectMission(m, view === 'SANDBOX')}><b>{m.id}</b><div><h3>{m.title.replace('OPERATION ', '')}</h3><p>{m.technique}</p></div><span>{campaign.completed.includes(m.id) ? 'REPLAY' : isUnlocked(campaign, m.id) ? 'AVAILABLE' : 'LOCKED'}<small>+{m.rewardXP} XP</small></span></button>)}</section>
+      <section className="workspace-panel module-padding"><PanelHeader title="MISSION PROTOCOL" meta="AURELIA" /><p>Read the briefing → investigate each objective → recover the flag → submit it → open the next operation. Checkpoints survive closing the range and reloading.</p>{campaign.completed.length === 8 && <button className="workspace-cta" onClick={props.onReviewEnding}>{campaign.ending ? 'REVIEW FINAL DIRECTIVE' : 'CHOOSE THE FATE OF THE VEIL'}</button>}</section>
+    </div>;
+    if (view === 'INTEL') return <div className="workspace-grid intel-workspace"><section className="workspace-panel intel-index"><PanelHeader title="RECOVERED EVIDENCE" meta={`${props.intelList.length} RECORDS`} />{props.intelList.map(item => <button key={item.id} className={item.id === selectedIntel.id ? 'active' : ''} onClick={() => setSelectedId(item.id)}><span>{String(item.number).padStart(2, '0')}</span><div><b>{item.title}</b><small>{item.subtitle}</small></div></button>)}<p className="module-padding">Complete operations to decrypt additional memories.</p></section><article className="workspace-panel module-padding dossier"><span className="workspace-kicker">{selectedIntel.classification} // {selectedIntel.id}</span><h1>{selectedIntel.title}</h1><p>{selectedIntel.content}</p><footer>{selectedIntel.date} // AUTHENTICATED RANGE EVIDENCE</footer><button className="workspace-cta" onClick={() => onNavigate('CONSPIRACY')}>OPEN EVIDENCE MAP →</button></article></div>;
+    if (view === 'DATABASE') return <div className="module-stack"><section className="workspace-panel module-padding"><PanelHeader title="OPERATOR KNOWLEDGE BASE" meta="MISSION-LINKED RECORDS" /><label className="module-search">SEARCH RECORDS<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search technique, operation or guidance…" /></label></section><div className="module-cards">{archive.map(m => <article key={m.id} className="workspace-panel module-padding"><span className="workspace-kicker">{m.id} // FIELD MANUAL</span><h2>{m.technique}</h2><p>{m.theory}</p><button className="workspace-cta" onClick={() => props.onSelectMission(m)}>OPEN ASSOCIATED OPERATION →</button></article>)}</div>{!archive.length && <p>No matching unlocked records.</p>}<article className="workspace-panel module-padding"><h2>AURELIA // HANDLER DOSSIER</h2><p>{campaign.augments.includes('archive') ? 'ARCHIVE DECRYPTED: Dr. Aurelia Vance designed a continuity protocol for minds threatened by the Shatter. The handler shares her voice and a subset of her memories. Whether this is inheritance or identity remains unresolved. Your final directive determines who gets to answer.' : 'This auxiliary archive requires the Deep Archive upgrade. Mission evidence is always available without upgrades.'}</p><button className="workspace-cta" onClick={() => onNavigate('UPGRADES')}>OPEN AUGMENTATIONS →</button></article></div>;
+    if (view === 'SKILL_TREE' || view === 'UPGRADES') return <div className="module-stack"><section className="workspace-panel module-padding"><PanelHeader title={view === 'SKILL_TREE' ? 'NEURAL PROTOCOLS' : 'HARDWARE AUGMENTATIONS'} meta={`${credits(campaign)} CREDITS AVAILABLE`} /><p>Earn credits by completing operations for the first time. Purchases are permanent for this campaign and use the same balance across both modules.</p></section><div className="module-cards">{augmentations.filter(a => a.type === (view === 'SKILL_TREE' ? 'skill' : 'upgrade')).map(a => { const owned = campaign.augments.includes(a.id); return <article className={`workspace-panel augment-card module-padding ${owned ? 'installed' : ''}`} key={a.id}><span className="augment-icon">{owned ? <Check /> : <Zap />}</span><span className="workspace-kicker">{owned ? 'INSTALLED // ACTIVE' : `${a.cost} CREDITS`}</span><h1>{a.name}</h1><p>{a.description}</p><button className="workspace-cta" disabled={owned || credits(campaign) < a.cost} onClick={() => buy(a.id)}>{owned ? 'PROTOCOL ONLINE' : credits(campaign) < a.cost ? 'INSUFFICIENT CREDITS' : 'INSTALL AUGMENTATION'}</button></article>; })}</div><button className="workspace-cta" onClick={() => onNavigate('MISSIONS')}>EARN CREDITS // OPEN OPERATIONS →</button></div>;
+    if (view === 'CONSPIRACY') return <div className="module-stack"><section className="workspace-panel module-padding"><PanelHeader title="THE SHATTER // EVIDENCE CHAIN" meta={`${campaign.completed.length} VERIFIED LINKS`} /><p>Each recovered memory adds a verified link. Undiscovered records remain sealed.</p></section><div className="evidence-chain">{gameMissions.map((m, i) => <article className={`workspace-panel module-padding ${campaign.completed.includes(m.id) ? 'verified' : 'sealed'}`} key={m.id}><span>{String(i + 1).padStart(2, '0')} // {m.id}</span><h2>{m.title.replace('OPERATION ', '')}</h2><p>{campaign.completed.includes(m.id) ? m.lore : 'CLASSIFIED — complete this operation to recover the connection.'}</p><button disabled={!isUnlocked(campaign, m.id)} onClick={() => props.onSelectMission(m)}>{campaign.completed.includes(m.id) ? 'REVISIT SOURCE' : 'INVESTIGATE'} →</button></article>)}</div><label className="workspace-panel module-padding field-notes">OPERATOR FIELD NOTES<textarea value={campaign.notes} maxLength={12000} onChange={e => onUpdate(c => ({ ...c, notes: e.target.value }))} placeholder="Record your interpretation of the evidence. Saved with your campaign." /></label></div>;
+    if (view === 'TERMINAL') return <div className="workspace-grid terminal-workspace"><section className="workspace-panel module-padding"><PanelHeader title="AETHER SHELL" meta="CHECKPOINT RESTORED" /><pre className="shell-summary">{`operator@${active.id.toLowerCase()}:~$ status\n\nOPERATION: ${active.title}\nOBJECTIVES: ${campaign.ranges[active.id]?.completedSteps ?? 0}/${active.objectives.length}\nTRACE: ${campaign.ranges[active.id]?.trace ?? 0}%\nCHANNEL: ${campaign.channel ? 'CONNECTED' : 'DISCONNECTED'}\n\nNo command has been executed on a real system.`}</pre></section><section className="workspace-panel module-padding"><TerminalSquare /><h1>RESUME INVESTIGATION</h1><p>{active.objective}</p><button className="workspace-cta" disabled={!campaign.channel} onClick={props.onOpenTerminal}>ENTER OPERATIONAL SHELL →</button>{!campaign.channel && <button className="workspace-cta" onClick={() => onUpdate(c => ({ ...c, channel: true }))}>RECONNECT SIMULATED CHANNEL</button>}<button className="workspace-cta" onClick={props.onOpenBriefing}>REVIEW BRIEFING →</button></section></div>;
+    if (view === 'NOTIFICATIONS') return <div className="module-stack">{props.notifications.map(n => <article key={n.id} className="workspace-panel module-padding"><PanelHeader title={n.title} meta={n.timestamp} /><p>{n.description}</p><button className="workspace-cta" onClick={() => onNavigate(n.type === 'mission' ? 'MISSIONS' : n.type === 'intel' ? 'INTEL' : 'SETTINGS')}>OPEN RELATED MODULE →</button></article>)}<article className="workspace-panel module-padding"><h2>HANDLER CHANNEL</h2><p>Your conversations with Aurelia are available on the command deck. In offline mode, she uses authored dialogue linked to your current mission.</p><button className="workspace-cta" onClick={props.onClose}>CONTACT AURELIA →</button></article></div>;
+    if (view === 'OPERATOR') return <div className="module-stack"><section className="workspace-panel module-padding"><span className="workspace-kicker">IDENTITY // {operator.clearance}</span><h1>{operator.name}</h1><div className="operator-stat-grid"><div><b>{operator.level}</b><span>LEVEL</span></div><div><b>{operator.xpCurrent}</b><span>EXPERIENCE</span></div><div><b>{credits(campaign)}</b><span>CREDITS</span></div><div><b>{operator.trustLevel}%</b><span>TRUST</span></div></div><p>{campaign.completed.length}/8 operations completed. Next level at {operator.xpNext} XP.</p><p>Final directive: {campaign.ending?.toUpperCase() ?? 'UNRESOLVED'}</p></section><div className="module-cards">{operator.badges.map(b => <article className={`workspace-panel module-padding ${b.unlocked ? 'verified' : 'sealed'}`} key={b.id}><Shield /><h2>{b.name}</h2><p>{b.description}</p><span>{b.unlocked ? 'EARNED' : 'LOCKED'}</span></article>)}</div></div>;
+    return <div className="module-stack"><div className="module-cards"><section className="workspace-panel module-padding audio-settings"><PanelHeader title="AUDIO MIX // AETHER CORE" meta="DEVICE PREFERENCES" />{([['muted', 'MUTE ALL AUDIO'], ['synth', 'INTERFACE EFFECTS'], ['ambient', 'REACTOR AMBIENCE'], ['voice', 'AURELIA VOICE']] as const).map(([key, label]) => <label key={key} className="setting-toggle"><span>{label}</span><input type="checkbox" checked={prefs[key]} onChange={e => prefs.update({ [key]: e.target.checked })} /></label>)}{([['master', 'MASTER'], ['effectsVolume', 'EFFECTS'], ['ambientVolume', 'AMBIENCE'], ['voiceVolume', 'VOICE']] as const).map(([key, label]) => <label className="mix-fader" key={key}><span>{label}<b>{Math.round(prefs[key] * 100)}%</b></span><input type="range" min="0" max="1" step="0.05" value={prefs[key]} onChange={e => prefs.update({ [key]: Number(e.target.value) } as Partial<Preferences>)} /></label>)}<div className="audio-audition"><button onClick={sound.playClick}>INTERFACE</button><button onClick={sound.playDeploy}>DEPLOYMENT</button><button onClick={sound.playWarning}>WARNING</button><button onClick={sound.playSuccess}>COMPLETION</button></div><p className="module-note">Audio starts after interaction and pauses in background tabs. Voice quality depends on installed browser/system voices; dialogue stays readable without audio.</p></section><section className="workspace-panel module-padding"><PanelHeader title="DISPLAY & ACCESS" meta="PERSISTENT" />{([['scanlines', 'HOLOGRAPHIC SCANLINES'], ['reducedMotion', 'REDUCED MOTION']] as const).map(([key, label]) => <label className="setting-toggle" key={key}><span>{label}</span><input type="checkbox" checked={prefs[key]} onChange={e => prefs.update({ [key]: e.target.checked })} /></label>)}<h2>CAMPAIGN STORAGE</h2><p>Saved in this browser, separately for each operator. Export before clearing browser data. Authentication does not currently synchronize the campaign between devices.</p><button className="workspace-cta" onClick={downloadSave}>EXPORT CAMPAIGN BACKUP</button><label className="save-import">RESTORE BACKUP<input type="file" accept="application/json,.json" onChange={async e => { const file = e.target.files?.[0]; if (!file) return; if (file.size > 100000) { setFeedback('Backup is too large.'); return; } try { const raw = await file.text(); const parsed = JSON.parse(raw); if (parsed.version !== 1 || !Array.isArray(parsed.completed)) throw new Error('invalid'); if (window.confirm('Replace this operator’s local campaign with this backup?')) { onUpdate(() => parseCampaign(raw)); setFeedback('Campaign restored.'); } } catch { setFeedback('Invalid campaign backup. Nothing was changed.'); } e.target.value = ''; }} /></label><button className="workspace-cta danger" onClick={() => { if (window.confirm('Reset this operator’s campaign, purchases and notes? Export a backup first if you want to restore them.')) { onUpdate(() => newCampaign()); setFeedback('Campaign reset. Black Echo is available.'); } }}>RESET LOCAL CAMPAIGN</button><button className="workspace-cta" onClick={props.onLogout}>SIGN OUT // END SESSION</button></section></div></div>;
   };
-
-  return <div className="veil-workspace-overlay" role="dialog" aria-modal="true" aria-label={`${title} workspace`}><header className="workspace-topbar"><button className="workspace-brand" onClick={onClose}><BrandMark /><span><strong>PROJECT VEIL</strong><small>AETHER PROTOCOL INTERFACE</small></span></button><div><b>{title}</b><span>SEC_ZERO_POD // V2.6</span></div><div className="workspace-operator"><span>OPERATOR: <b>{operator.name.toUpperCase()}</b></span><span>TRUST LEVEL: {operator.trustLevel}%</span></div></header><aside className="workspace-rail">{tabs.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}><Icon /><span>{label}</span></button>)}<button className="workspace-return" onClick={onClose}><ArrowLeft /><span>COMMAND DECK</span></button></aside><main className="workspace-main"><div className="workspace-title"><div><span>PROJECT VEIL // SECURE WORKSPACE</span><h2>{title}</h2></div><div><i /> LIVE DATASTREAM</div></div>{renderWorkspace()}</main><footer className="workspace-footer"><span>LINK: STABLE</span><span>ENCRYPTION: AETHER-256</span><span>SESSION NODE: 7G23-XQ9P</span><b>SECURE CHANNEL <i /></b></footer></div>;
+  return <div className="veil-workspace-overlay" aria-label={`${title} page`}><header className="workspace-topbar"><button className="workspace-brand" onClick={props.onClose}><Shield /><span><strong>PROJECT VEIL</strong><small>AETHER PROTOCOL INTERFACE</small></span></button><div><b>{title}</b><span>ACT I // THE SHATTER</span></div><div className="workspace-operator"><span>OPERATOR: <b>{operator.name}</b></span><span>{credits(campaign)} CREDITS // {campaign.completed.length}/8</span></div></header><nav className="workspace-rail" aria-label="Game modules">{workspaceTabs.map(({ id, label, icon: Icon }) => <button key={id} aria-label={label} aria-current={view === id ? 'page' : undefined} className={view === id ? 'active' : ''} onClick={() => { setQuery(''); setFeedback(''); onNavigate(id); }}><Icon /><span>{label}</span></button>)}<button className="workspace-return" onClick={props.onClose} aria-label="Command deck"><ArrowLeft /><span>COMMAND DECK</span></button></nav><main className="workspace-main" key={view}><div className="workspace-title"><div><span>PROJECT VEIL // OPERATIONAL MODULE</span><h2>{title}</h2></div><span>DEVICE-LOCAL SAVE</span></div>{feedback && <p role="status" className="module-feedback">{feedback}</p>}{render()}</main><footer className="workspace-footer"><span>{campaign.channel ? 'LINK CONNECTED' : 'LINK DISCONNECTED'}</span><span>ISOLATED TRAINING SIMULATION</span><b>CHECKPOINTS AUTO-SAVED</b></footer></div>;
 };
-
-const WorkspaceHeader: React.FC<{ eyebrow: string; status: string }> = ({ eyebrow, status }) => <header className="workspace-panel-head"><span>{eyebrow}</span><b>{status}</b></header>;
-const BrandMark = () => <svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M32 7 57 53H7L32 7Z" /><path d="m32 18 14 27H18l14-27ZM32 18v27M18 45l14-10 14 10" /></svg>;
-const settingDescription = (key: string) => ({ synth: 'Interface clicks and operational feedback.', voice: 'Allow Aurelia to speak responses aloud.', scanlines: 'Analog holographic display texture.', reducedMotion: 'Reduce parallax and ambient movement.' }[key] ?? 'Local interface preference.');
+const PanelHeader = ({ title, meta }: { title: string; meta: string }) => <header className="workspace-panel-head"><span>{title}</span><b>{meta}</b></header>;

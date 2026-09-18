@@ -5,6 +5,7 @@ import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import './AureliaHologram3D.css';
 import { createAureliaProjection, createFacetedFaceGeometry, normalizedMorphName } from './aureliaGeometry';
+import { usePreferences } from '../../store/preferencesStore';
 
 export type AureliaExpression = 'neutral' | 'thinking' | 'speaking' | 'alert' | 'pleased';
 
@@ -182,13 +183,14 @@ export const AureliaHologram3D: React.FC<AureliaHologram3DProps> = ({ expression
     const observer = new ResizeObserver(resize);
     observer.observe(mount);
     resize();
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
     let nextBlink = 2.2;
     let blinkStarted = -10;
     const render = () => {
       animationFrame = window.requestAnimationFrame(render);
       timer.update();
       const time = timer.getElapsed();
+      const reducedMotion = motionPreference.matches || usePreferences.getState().reducedMotion;
       const mood = expressionRef.current;
       const speaking = speakingRef.current;
       lookRef.current.x += (targetLookRef.current.x - lookRef.current.x) * .06;

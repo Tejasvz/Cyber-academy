@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { AureliaHologram3D, type AureliaExpression } from '../AI/AureliaHologram3D';
 import './ProjectVeilEntryPoint.css';
+import { speakAurelia } from '../../utils/aureliaVoice';
+import { usePreferences } from '../../store/preferencesStore';
 
 interface ProjectVeilEntryPointProps { onEnter: () => void }
 
@@ -31,23 +33,17 @@ const scenes = [
 
 export const ProjectVeilEntryPoint: React.FC<ProjectVeilEntryPointProps> = ({ onEnter }) => {
   const [sceneIndex, setSceneIndex] = useState(0);
-  const [muted, setMuted] = useState(false);
+  const voice = usePreferences(state => state.voice);
+  const setPreference = usePreferences(state => state.update);
+  const muted = !voice;
+  const setMuted = (change: (current: boolean) => boolean) => setPreference({ voice: !change(muted) });
   const [isSpeaking, setIsSpeaking] = useState(false);
   const scene = scenes[sceneIndex];
 
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
 
   const speak = (text: string) => {
-    if (muted || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    utterance.voice = voices.find((voice) => /female|samantha|zira|aria|sonia|jenny/i.test(voice.name)) ?? voices.find((voice) => voice.lang.startsWith('en')) ?? null;
-    utterance.rate = .86; utterance.pitch = 1.03; utterance.volume = .72;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
+    speakAurelia(text, () => setIsSpeaking(false), () => setIsSpeaking(true));
   };
 
   const advance = () => {
