@@ -275,10 +275,14 @@ export const AureliaHologram3D: React.FC<AureliaHologram3DProps> = ({ expression
   };
 
   return (
-    <button className={`aurelia-3d is-${expression} ${ready ? 'is-ready' : 'is-loading'}`} onPointerMove={trackPointer} onPointerLeave={() => { targetLookRef.current = { x: 0, y: 0 }; }} onClick={onInteract} aria-label={`Talk to Aurelia. Current expression: ${expression}`}>
+    <button className={`aurelia-3d is-${expression} ${isSpeaking ? 'is-speaking' : ''} ${ready ? 'is-ready' : 'is-loading'}`} onPointerMove={trackPointer} onPointerLeave={() => { targetLookRef.current = { x: 0, y: 0 }; }} onClick={onInteract} aria-label={`Talk to Aurelia. Current expression: ${expression}`}>
       <div className="aurelia-3d-canvas" ref={mountRef} />
+      <div className="aurelia-pulse-ring ring-1" />
+      <div className="aurelia-pulse-ring ring-2" />
+      <div className="aurelia-pulse-ring ring-3" />
       <div className="aurelia-3d-particles" /><div className="aurelia-3d-scan" />
-      <div className="aurelia-3d-status"><i /> AURELIA // {ready ? 'NEURAL LINK ACTIVE' : 'INITIALIZING'} <span>{expression.toUpperCase()}</span></div>
+      <div className="aurelia-3d-status"><i /> AURELIA // {ready ? (isSpeaking ? 'TRANSMITTING' : 'NEURAL LINK ACTIVE') : 'INITIALIZING'} <span>{expression.toUpperCase()}</span></div>
     </button>
   );
 };
+

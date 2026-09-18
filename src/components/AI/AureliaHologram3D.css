@@ -8,6 +8,23 @@
   background: radial-gradient(ellipse at 50% 63%, rgba(8, 94, 180, .16), transparent 52%);
   overflow: hidden;
   cursor: crosshair;
+  transition: background 0.4s ease;
+}
+
+.aurelia-3d.is-speaking {
+  background: radial-gradient(ellipse at 50% 63%, rgba(152, 117, 212, .25), transparent 60%);
+}
+
+.aurelia-3d.is-thinking {
+  background: radial-gradient(ellipse at 50% 63%, rgba(98, 140, 220, .22), transparent 58%);
+}
+
+.aurelia-3d.is-alert {
+  background: radial-gradient(ellipse at 50% 63%, rgba(255, 95, 126, .28), transparent 62%);
+}
+
+.aurelia-3d.is-pleased {
+  background: radial-gradient(ellipse at 50% 63%, rgba(52, 211, 153, .25), transparent 60%);
 }
 
 .aurelia-3d-canvas,
@@ -25,10 +42,52 @@
 }
 
 .aurelia-3d.is-loading .aurelia-3d-canvas { opacity: .25; }
-.aurelia-3d:hover .aurelia-3d-canvas { filter: drop-shadow(0 0 5px rgba(45, 180, 255, .4)); }
-.aurelia-3d.is-alert .aurelia-3d-canvas { filter: drop-shadow(0 0 8px rgba(255, 43, 105, .5)); }
-.aurelia-3d.is-pleased .aurelia-3d-canvas { filter: drop-shadow(0 0 8px rgba(30, 255, 191, .5)); }
+.aurelia-3d:hover .aurelia-3d-canvas { filter: drop-shadow(0 0 8px rgba(45, 180, 255, .55)); }
+.aurelia-3d.is-speaking .aurelia-3d-canvas { filter: drop-shadow(0 0 12px rgba(152, 117, 212, .65)); }
+.aurelia-3d.is-alert .aurelia-3d-canvas { filter: drop-shadow(0 0 14px rgba(255, 43, 105, .75)); }
+.aurelia-3d.is-pleased .aurelia-3d-canvas { filter: drop-shadow(0 0 14px rgba(52, 211, 153, .75)); }
 .aurelia-3d:focus-visible { outline: 1px solid #54ddff; outline-offset: -3px; }
+
+/* Dynamic Concentric Pulse Rings */
+.aurelia-pulse-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.85);
+  border-radius: 50%;
+  border: 1px solid rgba(64, 201, 220, 0.35);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.aurelia-pulse-ring.ring-1 { width: 140px; height: 140px; }
+.aurelia-pulse-ring.ring-2 { width: 220px; height: 220px; }
+.aurelia-pulse-ring.ring-3 { width: 300px; height: 300px; }
+
+.aurelia-3d.is-speaking .aurelia-pulse-ring.ring-1 {
+  opacity: 0.6;
+  border-color: rgba(152, 117, 212, 0.5);
+  animation: aurelia-pulse-scale 1.8s ease-out infinite;
+}
+
+.aurelia-3d.is-speaking .aurelia-pulse-ring.ring-2 {
+  opacity: 0.4;
+  border-color: rgba(64, 201, 220, 0.4);
+  animation: aurelia-pulse-scale 1.8s ease-out 0.4s infinite;
+}
+
+.aurelia-3d.is-speaking .aurelia-pulse-ring.ring-3 {
+  opacity: 0.25;
+  border-color: rgba(232, 196, 104, 0.35);
+  animation: aurelia-pulse-scale 1.8s ease-out 0.8s infinite;
+}
+
+@keyframes aurelia-pulse-scale {
+  0% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(1.35); opacity: 0; }
+}
 
 .aurelia-3d-particles {
   position: absolute;
@@ -86,7 +145,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .aurelia-3d-particles,
-  .aurelia-3d-scan { animation: none; }
+  .aurelia-3d-scan,
+  .aurelia-pulse-ring { animation: none; }
 }
 
 /* The former portrait overlapped the dialogue on narrow screens. Give the
