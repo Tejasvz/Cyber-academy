@@ -86,5 +86,28 @@ class SoundManager {
   playWarning = () => { if (this.cue('warning', 450)) { this.tone(95, .3, .14, 0, 72); this.texture(.23, .19, 320); } };
   playDeploy = () => { if (this.cue('deploy', 700)) { this.texture(1.1, .28, 440); this.tone(70, 1.3, .15, .1, 42); } };
   playSuccess = () => { if (this.cue('success', 900)) { this.texture(.5, .1, 750); [130.81, 155.56, 196].forEach(f => this.tone(f, 1.6, .065)); } };
+  playHexSelect = () => { if (this.cue('hex', 40)) { this.tone(340, .05, .08, 0, 480); this.texture(.02, .08, 2200); } };
+  playBufferMatch = () => { if (this.cue('buffermatch', 200)) { this.tone(523.25, .15, .12); this.tone(659.25, .22, .14, .08); this.tone(783.99, .35, .16, .16); } };
+  playFrequencyTick = () => { if (this.cue('freqtick', 50)) { this.texture(.015, .06, 3200); } };
+  playHarmonize = () => { if (this.cue('harmonize', 600)) { [220, 277.18, 329.63, 440].forEach((f, idx) => this.tone(f, 1.2, .07, idx * 0.05)); } };
+  playCodeRedAlarm = () => {
+    if (this.cue('codered', 800)) {
+      this.tone(180, .4, .25, 0, 90);
+      this.tone(240, .4, .2, .2, 120);
+      this.texture(.4, .25, 400);
+    }
+  };
+  playFanfare = () => {
+    if (this.cue('fanfare', 1000)) {
+      [261.63, 329.63, 392.00, 523.25].forEach((f, i) => this.tone(f, 1.4, .08, i * .12));
+    }
+  };
+  playEmergencySuccess = () => {
+    if (this.cue('emerg_success', 600)) {
+      this.texture(.6, .18, 600);
+      [440, 554.37, 659.25, 880].forEach(f => this.tone(f, 1.8, .08));
+    }
+  };
 }
 export const sound = new SoundManager();
+

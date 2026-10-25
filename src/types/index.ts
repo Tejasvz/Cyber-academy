@@ -1,6 +1,7 @@
 export type NavTab = 
   | 'DASHBOARD'
   | 'MISSIONS'
+  | 'MAP'
   | 'SKILL_TREE'
   | 'INTEL'
   | 'CONSPIRACY'
@@ -11,6 +12,27 @@ export type NavTab =
   | 'OPERATOR'
   | 'NOTIFICATIONS'
   | 'SETTINGS';
+
+export type WindowId = 
+  | 'mission'
+  | 'operator'
+  | 'terminal'
+  | 'notifications'
+  | 'integrity'
+  | 'intel'
+  | 'secure'
+  | 'dialogue';
+
+export interface WindowState {
+  isOpen: boolean;
+  isMinimized: boolean;
+  isMaximized: boolean;
+  zIndex: number;
+}
+
+export type ThemeType = 'CYAN' | 'MATRIX' | 'AMETHYST' | 'AMBER';
+
+export type MinigameType = 'hex' | 'frequency' | null;
 
 export interface Mission {
   id: string;
@@ -80,3 +102,4 @@ export interface AudioSettings {
   muted: boolean;
   volume: number;
 }
+

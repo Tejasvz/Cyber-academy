@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Crosshair, Database, Eye, GitMerge, Radio, Settings, Shield, TerminalSquare, UserRound, Zap, Box, Check } from 'lucide-react';
+import { ArrowLeft, Compass, Crosshair, Database, Eye, GitMerge, Radio, Settings, Shield, TerminalSquare, UserRound, Zap, Box, Check } from 'lucide-react';
 import type { IntelItem, Mission, NavTab, Operator, AINotification } from '../../types';
 import type { GameMission } from '../../game/gameData';
 import { augmentations, credits, isUnlocked, newCampaign, parseCampaign, purchase, type Campaign } from '../../game/campaign';
 import { usePreferences, type Preferences } from '../../store/preferencesStore';
 import { sound } from '../../utils/audioSynth';
 import { NetworkTopology3D } from '../HUD/NetworkTopology3D';
+import { GameMapModule } from '../Map/GameMapModule';
 import './ViewTabOverlay.css';
 import './GameWorkspace.css';
 
@@ -19,11 +20,17 @@ interface Props {
   onNavigate: (tab: NavTab) => void; notifications: AINotification[]; onReviewEnding: () => void;
 }
 const workspaceTabs: Array<{ id: NavTab; label: string; icon: React.ElementType }> = [
-  { id: 'MISSIONS', label: 'MISSIONS', icon: Crosshair }, { id: 'SANDBOX', label: 'SANDBOX', icon: Box },
-  { id: 'TERMINAL', label: 'TERMINAL', icon: TerminalSquare }, { id: 'INTEL', label: 'INTEL', icon: Eye },
-  { id: 'DATABASE', label: 'DATABASE', icon: Database }, { id: 'SKILL_TREE', label: 'NEURAL TREE', icon: GitMerge },
-  { id: 'UPGRADES', label: 'UPGRADES', icon: Zap }, { id: 'CONSPIRACY', label: 'EVIDENCE MAP', icon: Radio },
-  { id: 'OPERATOR', label: 'OPERATOR', icon: UserRound }, { id: 'NOTIFICATIONS', label: 'COMM FEED', icon: Radio },
+  { id: 'MISSIONS', label: 'MISSIONS', icon: Crosshair },
+  { id: 'MAP', label: 'SECTOR MAP', icon: Compass },
+  { id: 'SANDBOX', label: 'SANDBOX', icon: Box },
+  { id: 'TERMINAL', label: 'TERMINAL', icon: TerminalSquare },
+  { id: 'INTEL', label: 'INTEL', icon: Eye },
+  { id: 'DATABASE', label: 'DATABASE', icon: Database },
+  { id: 'SKILL_TREE', label: 'NEURAL TREE', icon: GitMerge },
+  { id: 'UPGRADES', label: 'UPGRADES', icon: Zap },
+  { id: 'CONSPIRACY', label: 'EVIDENCE MAP', icon: Radio },
+  { id: 'OPERATOR', label: 'OPERATOR', icon: UserRound },
+  { id: 'NOTIFICATIONS', label: 'COMM FEED', icon: Radio },
   { id: 'SETTINGS', label: 'CONFIG', icon: Settings },
 ];
 
@@ -44,8 +51,19 @@ export const ViewTabOverlay: React.FC<Props> = (props) => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   const render = () => {
+    if (view === 'MAP') {
+      return (
+        <GameMapModule
+          gameMissions={gameMissions}
+          activeMissionId={campaign.active}
+          completedMissionIds={props.completedMissionIds}
+          onSelectMission={props.onSelectMission}
+        />
+      );
+    }
 
     if (view === 'MISSIONS' || view === 'SANDBOX') return <div className="workspace-grid missions-workspace">
+
       <section className="workspace-panel primary-mission-card"><span className="workspace-kicker">{view === 'SANDBOX' ? 'ISOLATED CYBER RANGE' : 'ACTIVE OPERATION'} // {mission.id}</span><h1>{mission.title}</h1><p>{mission.objective}</p><div className="mission-meter"><i><b style={{ width: `${mission.progress}%` }} /></i><strong>{mission.progress}%</strong></div><dl className="mission-facts"><div><dt>TECHNIQUE</dt><dd>{active.technique}</dd></div><div><dt>REWARD</dt><dd>+{active.rewardXP} XP / +{active.rewardXP / 5} CREDITS</dd></div><div><dt>CHECKPOINT</dt><dd>{campaign.ranges[active.id]?.completedSteps ?? 0} / {active.objectives.length}</dd></div><div><dt>TRACE</dt><dd>{campaign.ranges[active.id]?.trace ?? 0}%</dd></div></dl><button className="workspace-cta" onClick={view === 'SANDBOX' ? props.onOpenTerminal : props.onOpenBriefing}>{view === 'SANDBOX' ? 'RESUME RANGE' : 'OPEN BRIEFING'} →</button><p className="module-note">Every command runs in a simulation. No scans or attacks leave your browser. Replays never award duplicate XP or credits.</p></section>
       <section className="workspace-panel operation-queue"><PanelHeader title={view === 'SANDBOX' ? 'AVAILABLE RANGE INSTANCES' : 'CAMPAIGN // ACT I & ACT II'} meta={`${campaign.completed.length} / ${gameMissions.length} VERIFIED`} />{gameMissions.map(m => <button className={`queue-item ${campaign.active === m.id ? 'active' : ''}`} key={m.id} disabled={!isUnlocked(campaign, m.id)} onClick={() => props.onSelectMission(m, view === 'SANDBOX')}><b>{m.id}</b><div><h3>{m.title.replace('OPERATION ', '')}</h3><p>{m.technique}</p></div><span>{campaign.completed.includes(m.id) ? 'REPLAY' : isUnlocked(campaign, m.id) ? 'AVAILABLE' : 'LOCKED'}<small>+{m.rewardXP} XP</small></span></button>)}</section>
       <section className="workspace-panel module-padding" style={{ gridColumn: '1 / -1' }}><PanelHeader title="3D INTERACTIVE NETWORK TOPOLOGY" meta="AETHER NODE GRAPH" /><NetworkTopology3D gameMissions={gameMissions} activeMissionId={campaign.active} completedMissionIds={props.completedMissionIds} onSelectMission={props.onSelectMission} /></section>

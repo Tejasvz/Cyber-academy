@@ -1,0 +1,254 @@
+.tactical-radar-container {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 18px;
+  height: 620px;
+  width: 100%;
+}
+
+.radar-viewport {
+  position: relative;
+  background: #020512;
+  border: 1px solid rgba(160, 82, 239, 0.4);
+  box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.95);
+  overflow: hidden;
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px);
+}
+
+.radar-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.faction-overlay {
+  position: absolute;
+  inset: 12px;
+  pointer-events: none;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: #6d84b0;
+}
+
+.faction-tag {
+  position: absolute;
+  padding: 3px 8px;
+  background: rgba(13, 10, 28, 0.7);
+  border: 1px solid rgba(160, 82, 239, 0.25);
+}
+
+.faction-tag.tl { top: 0; left: 0; }
+.faction-tag.tr { top: 0; right: 0; }
+.faction-tag.bl { bottom: 0; left: 0; }
+.faction-tag.br { bottom: 0; right: 0; }
+
+.radar-node-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+  transition: transform 0.2s;
+}
+
+.radar-node-marker:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+  z-index: 20;
+}
+
+.marker-beacon {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(32, 214, 233, 0.4);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse-ring 3s infinite;
+  pointer-events: none;
+}
+
+.marker-core {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  background: #080c20;
+  border: 1px solid var(--veil-cyan);
+  color: var(--veil-cyan);
+  box-shadow: 0 0 10px rgba(32, 214, 233, 0.4);
+}
+
+.radar-node-marker.completed .marker-core {
+  border-color: #18efad;
+  color: #18efad;
+  box-shadow: 0 0 10px rgba(24, 239, 173, 0.5);
+}
+
+.radar-node-marker.active .marker-core {
+  background: var(--veil-cyan);
+  color: #030511;
+  font-weight: bold;
+  box-shadow: 0 0 18px var(--veil-cyan);
+}
+
+.radar-node-marker.selected .marker-core {
+  box-shadow: 0 0 22px #ffffff;
+  outline: 2px solid #ffffff;
+}
+
+.marker-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  color: #a4b3d0;
+  margin-top: 4px;
+  white-space: nowrap;
+  background: rgba(3, 5, 17, 0.85);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.radar-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 50;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: 'Share Tech Mono', monospace;
+  min-width: 160px;
+}
+.radar-tooltip b {
+  color: var(--veil-cyan);
+  font-size: 11px;
+}
+.radar-tooltip small {
+  color: #e09bff;
+  font-size: 9px;
+}
+.radar-tooltip span {
+  color: #7f90b5;
+  font-size: 8px;
+}
+
+.radar-inspector {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 18px;
+}
+
+.inspector-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #a4b3d0;
+  border-bottom: 1px solid rgba(160, 82, 239, 0.3);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+
+.inspector-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.inspector-content h2 {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 16px;
+  color: var(--veil-cyan);
+  margin: 0 0 4px;
+}
+
+.inspector-sector {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: #e09bff;
+  margin: 0 0 12px;
+}
+
+.inspector-rule {
+  border: 0;
+  border-top: 1px solid rgba(160, 82, 239, 0.25);
+  margin: 0 0 12px;
+}
+
+.inspector-desc {
+  font-size: 12px;
+  color: #a4b3d0;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.inspector-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background: rgba(6, 8, 24, 0.7);
+  padding: 12px;
+  border: 1px solid rgba(160, 82, 239, 0.25);
+  margin: 0 0 16px;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.inspector-meta-grid dt {
+  font-size: 8px;
+  color: #7f90b5;
+  margin-bottom: 2px;
+}
+
+.inspector-meta-grid dd {
+  margin: 0;
+  font-size: 10px;
+  color: #ffffff;
+}
+
+.threat-crit {
+  color: #ff3366 !important;
+  font-weight: bold;
+}
+
+.inspector-status-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: #8da3c9;
+  margin-bottom: 16px;
+}
+
+.inspector-status-badge b.verified {
+  color: #18efad;
+}
+.inspector-status-badge b.active {
+  color: var(--veil-cyan);
+}
+.inspector-status-badge b.pending {
+  color: #a855f7;
+}
+
+@keyframes pulse-ring {
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+
+@media (max-width: 900px) {
+  .tactical-radar-container {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .radar-viewport {
+    height: 400px;
+  }
+}

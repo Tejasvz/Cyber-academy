@@ -12,16 +12,25 @@ const isMatch = (input: string, expected: string) => {
 
 export const initialRangeState = (): RangeState => ({ completedSteps: 0, currentDirectory: '~', discoveredFlag: null, trace: 0, recovered: false });
 
-export const executeRangeCommand = (mission: GameMission, command: string, state: RangeState): RangeResult => {
+export const executeRangeCommand = (mission: GameMission, command: string, state: RangeState, augments: string[] = []): RangeResult => {
   const input = normalize(command);
   if (!input) return { output: [], state, tone: 'normal' };
-  if (input === 'help') return { output: ['AVAILABLE: help, objectives, hint, clear, status', 'Use normal investigation commands shown in the mission briefing.', 'When a flag is recovered, run: submit flag{...}'], state, tone: 'normal' };
+  if (input === 'help') return { output: ['AVAILABLE: help, objectives, hint, analysis, recover, clear, status', 'Use normal investigation commands shown in the mission briefing.', 'When a flag is recovered, run: submit flag{...}'], state, tone: 'normal' };
   if (input === 'objectives') return { output: mission.objectives.map((item, index) => `${index < state.completedSteps ? '[✓]' : '[ ]'} ${item.label}`), state, tone: 'normal' };
-  if (input === 'hint') {
+  if (input === 'hint' || input === 'analysis') {
     const next = mission.objectives[state.completedSteps];
-    return { output: [`AURELIA: Try ${next?.command ?? `submit ${mission.flag}`}`], state, tone: 'warning' };
+    const hasAnalysis = augments.includes('analysis');
+    return {
+      output: [
+        hasAnalysis ? 'ANALYSIS ASSIST [NEURAL PERK ONLINE]:' : 'AURELIA HANDLER HINT:',
+        `Command: ${next?.command ?? `submit ${mission.flag}`}`,
+        hasAnalysis && next ? `Objective: ${next.label}` : 'Execute command to advance range.',
+      ].filter(Boolean) as string[],
+      state,
+      tone: 'warning',
+    };
   }
-  if (input === 'status') return { output: [`MISSION ${mission.id} // ${state.completedSteps}/${mission.objectives.length} OBJECTIVES COMPLETE`, `CURRENT DIRECTORY: ${state.currentDirectory}`], state, tone: 'normal' };
+  if (input === 'status') return { output: [`MISSION ${mission.id} // ${state.completedSteps}/${mission.objectives.length} OBJECTIVES COMPLETE`, `CURRENT DIRECTORY: ${state.currentDirectory}`, `TRACE LEVEL: ${state.trace}%`], state, tone: 'normal' };
   if (input.startsWith('submit ')) {
     const submitted = command.trim().slice(7).trim();
     if (submitted === mission.flag && state.discoveredFlag === mission.flag) return { output: ['FLAG VERIFIED.', 'MISSION OBJECTIVES COMPLETE.'], state, tone: 'success' };
@@ -49,14 +58,14 @@ export const executeRangeCommand = (mission: GameMission, command: string, state
 };
 
 export const getAutocompleteCandidates = (mission: GameMission, input: string): string[] => {
-
-  const baseCommands = ['help', 'objectives', 'hint', 'clear', 'status', 'recover', 'ls', 'ls -a', `submit ${mission.flag}`];
+  const baseCommands = ['help', 'objectives', 'hint', 'analysis', 'clear', 'status', 'recover', 'ls', 'ls -a', 'crack', 'tune', `submit ${mission.flag}`];
   const objectiveCmds = mission.objectives.flatMap(o => [o.command, ...(o.alternatives ?? [])]);
   const allCandidates = Array.from(new Set([...baseCommands, ...objectiveCmds]));
   const trimmed = input.trim().toLowerCase();
   if (!trimmed) return [];
   return allCandidates.filter(c => c.toLowerCase().startsWith(trimmed) && c.toLowerCase() !== trimmed);
 };
+
 
 export const getVirtualTreeForMission = (mission: GameMission, completedSteps: number): Array<{ name: string; isDir: boolean; path: string; status: 'hidden' | 'visible' | 'discovered' }> => {
   const nodes = [

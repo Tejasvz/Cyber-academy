@@ -13,8 +13,10 @@ import { ViewTabOverlay } from '../../components/modals/ViewTabOverlay';
 import { CampaignEnding } from '../../components/Mission/CampaignEnding';
 import { sound } from '../../utils/audioSynth';
 import { speakAurelia } from '../../utils/aureliaVoice';
+import { HexMatrixBreach } from '../../components/minigames/HexMatrixBreach';
+import { FrequencyTuner } from '../../components/minigames/FrequencyTuner';
 
-const validTabs: NavTab[] = ['DASHBOARD', 'MISSIONS', 'INTEL', 'DATABASE', 'SANDBOX', 'SKILL_TREE', 'UPGRADES', 'OPERATOR', 'CONSPIRACY', 'SETTINGS', 'NOTIFICATIONS', 'TERMINAL'];
+const validTabs: NavTab[] = ['DASHBOARD', 'MISSIONS', 'MAP', 'INTEL', 'DATABASE', 'SANDBOX', 'SKILL_TREE', 'UPGRADES', 'OPERATOR', 'CONSPIRACY', 'SETTINGS', 'NOTIFICATIONS', 'TERMINAL'];
 type Mood = 'neutral' | 'thinking' | 'speaking' | 'alert' | 'pleased';
 
 const Dashboard: React.FC = () => {
@@ -59,6 +61,7 @@ const Dashboard: React.FC = () => {
   const [diagnostics, setDiagnostics] = useState(false);
   const [initialCommand, setInitialCommand] = useState('');
   const [ending, setEnding] = useState(campaign.completed.length === gameMissions.length && !campaign.ending);
+  const [activeMinigame, setActiveMinigame] = useState<'hex' | 'frequency' | null>(null);
   const requestId = useRef(0);
   useEffect(() => () => { requestId.current++; window.speechSynthesis?.cancel(); }, []);
   const say = (text: string, emotion: Mood = 'neutral') => {
@@ -93,16 +96,55 @@ const Dashboard: React.FC = () => {
     say(`${m.title} verified. ${m.lore}`, 'pleased');
     if (m.id === 'B08' && !campaign.ending) { setTerminal(false); setEnding(true); }
   };
+  const handleMinigameSuccess = () => {
+    update(c => {
+      const prevRange = c.ranges[selected.id] ?? {
+        completedSteps: 0,
+        currentDirectory: '~',
+        discoveredFlag: null,
+        trace: 0,
+        recovered: false,
+      };
+      return {
+        ...c,
+        ranges: {
+          ...c.ranges,
+          [selected.id]: {
+            ...prevRange,
+            completedSteps: selected.objectives.length,
+            discoveredFlag: selected.flag,
+          },
+        },
+      };
+    });
+    onComplete(selected);
+    setActiveMinigame(null);
+  };
   const nextMission = gameMissions[gameMissions.findIndex(m => m.id === selected.id) + 1];
   return <>
     {saveError && <div className="save-warning" role="alert">{saveError}</div>}
     {activeTab === 'DASHBOARD' ? <ReferenceCommandDeck activeTab={activeTab} dialogueText={dialogue} health={health} intelList={intelList} isSpeaking={speaking} aureliaMood={mood} mission={mission} notifications={notifications} operator={operator} secureChannelActive={campaign.channel}
-      onBeginMission={() => setBriefing(true)} onOpenDiagnostics={() => setDiagnostics(true)} onOpenIntelDatabase={() => navigate('INTEL')} onOpenMissionBriefing={() => setBriefing(true)} onOpenOperatorProfile={() => navigate('OPERATOR')} onOpenTerminal={() => openTerminal()} onSelectTab={navigate} onSendMessage={talk} onTerminalCommand={openTerminal} onToggleSecureChannel={() => update(c => ({ ...c, channel: !c.channel }))} />
+      onBeginMission={() => setBriefing(true)} onOpenDiagnostics={() => setDiagnostics(true)} onOpenIntelDatabase={() => navigate('INTEL')} onOpenMissionBriefing={() => setBriefing(true)} onOpenOperatorProfile={() => navigate('OPERATOR')} onOpenTerminal={() => openTerminal()} onSelectTab={navigate} onSendMessage={talk} onTerminalCommand={openTerminal} onToggleSecureChannel={() => update(c => ({ ...c, channel: !c.channel }))} onOpenMinigame={(type) => setActiveMinigame(type)} />
       : <ViewTabOverlay activeTab={activeTab} intelList={intelList} mission={mission} operator={operator} gameMissions={gameMissions} activeMissionId={selected.id} completedMissionIds={completed} campaign={campaign} onUpdate={update} onNavigate={navigate} onSelectMission={selectMission} onOpenBriefing={() => setBriefing(true)} onOpenTerminal={() => openTerminal()} onLogout={logout} onClose={() => navigate('DASHBOARD')} notifications={notifications} onReviewEnding={() => setEnding(true)} />}
     {briefing && <MissionBriefingModal mission={mission} gameMission={selected} operator={operator} completed={completed.has(selected.id)} onClose={() => setBriefing(false)} onDeploy={() => openTerminal()} onNavigate={navigate} />}
     {terminal && <FullTerminalModal key={selected.id} mission={selected} alreadyCompleted={completed.has(selected.id)} savedState={campaign.ranges[selected.id]} initialCommand={initialCommand} augments={campaign.augments} onStateChange={state => update(c => ({ ...c, ranges: { ...c.ranges, [selected.id]: state } }))} onMissionComplete={onComplete} onClose={() => setTerminal(false)} onNextMission={nextMission && completed.has(selected.id) ? () => selectMission(nextMission) : undefined} />}
     {diagnostics && <DiagnosticsModal onClose={() => setDiagnostics(false)} onCompleteDiagnostics={() => { update(c => ({ ...c, diagnostics: true })); sound.playSuccess(); }} />}
     {ending && <CampaignEnding onChoose={choice => { update(c => ({ ...c, ending: choice })); setEnding(false); sound.playSuccess(); say(choice === 'preserve' ? 'The grid is stable. I am still here. We will remember what it cost.' : 'The archives are open. The fragments are free. Thank you for letting them choose.', 'pleased'); }} />}
+    {activeMinigame === 'hex' && (
+      <HexMatrixBreach
+        hasTraceDamper={campaign.augments.includes('damping')}
+        onSuccess={handleMinigameSuccess}
+        onClose={() => setActiveMinigame(null)}
+      />
+    )}
+    {activeMinigame === 'frequency' && (
+      <FrequencyTuner
+        missionTitle={selected.title}
+        onSuccess={handleMinigameSuccess}
+        onClose={() => setActiveMinigame(null)}
+      />
+    )}
   </>;
 };
 export default Dashboard;
+

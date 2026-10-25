@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Check, ChevronRight, Circle, Flag, Folder, FileText, Lightbulb, RotateCcw, TerminalSquare, X } from 'lucide-react';
+import { AlertTriangle, Check, ChevronRight, Circle, Flag, Folder, FileText, Lightbulb, RotateCcw, Sliders, TerminalSquare, X, Zap } from 'lucide-react';
 import type { GameMission } from '../../game/gameData';
 import { executeRangeCommand, getAutocompleteCandidates, getVirtualTreeForMission, initialRangeState, type RangeState } from '../../game/terminalEngine';
 import { sound } from '../../utils/audioSynth';
 import { speakAurelia } from '../../utils/aureliaVoice';
+import { HexMatrixBreach } from '../minigames/HexMatrixBreach';
+import { FrequencyTuner } from '../minigames/FrequencyTuner';
 import './FullTerminalModal.css';
 
 interface ConsoleLine { id: number; type: 'system' | 'command' | 'normal' | 'success' | 'warning' | 'error'; text: string }
@@ -36,7 +38,7 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
   const initialLines = useMemo<ConsoleLine[]>(() => [
     { id: 1, type: 'system', text: `PROJECT VEIL RANGE // ${mission.id}` },
     { id: 2, type: 'normal', text: `${mission.title} loaded into isolated simulation.` },
-    { id: 3, type: 'normal', text: "Type 'objectives' to review the chain or press Tab for auto-completion." },
+    { id: 3, type: 'normal', text: "Type 'objectives' to review the chain, 'crack' for breach minigame, 'tune' for waveform tuner, or Tab to autocomplete." },
   ], [mission]);
   const [lines, setLines] = useState(initialLines);
   const [rangeState, setRangeState] = useState<RangeState>(savedState ?? initialRangeState());
@@ -46,6 +48,8 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [lockoutTimeLeft, setLockoutTimeLeft] = useState<number | null>(null);
   const [treeOpen, setTreeOpen] = useState(true);
+  const [activeMinigame, setActiveMinigame] = useState<'hex' | 'frequency' | null>(null);
+
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(10);
@@ -106,7 +110,26 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
       return;
     }
 
-    const result = executeRangeCommand(mission, command, rangeState);
+    const cmdLower = command.toLowerCase();
+    if (cmdLower === 'crack' || cmdLower === 'hack' || cmdLower === 'breach') {
+      setActiveMinigame('hex');
+      append([
+        { type: 'command', text: `operator@${mission.id.toLowerCase()}:~$ ${command}` },
+        { type: 'normal', text: 'INITIALIZING HEX MATRIX BREACH PROTOCOL PUZZLE...' },
+      ]);
+      return;
+    }
+
+    if (cmdLower === 'tune' || cmdLower === 'stabilize' || cmdLower === 'oscilloscope') {
+      setActiveMinigame('frequency');
+      append([
+        { type: 'command', text: `operator@${mission.id.toLowerCase()}:~$ ${command}` },
+        { type: 'normal', text: 'INITIALIZING QUANTUM FREQUENCY WAVEFORM TUNER...' },
+      ]);
+      return;
+    }
+
+    const result = executeRangeCommand(mission, command, rangeState, augments);
     if (result.output[0] === '__CLEAR__') { setLines([]); return; }
     if (result.tone === 'error') {
       const traceAdd = augments.includes('damping') ? 8 : 15;
@@ -122,6 +145,22 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
       onMissionComplete(mission);
       speakAurelia(`Flag verified. Operation ${mission.title} completed successfully.`, () => {});
     }
+  };
+
+  const handleMinigameSuccess = () => {
+    const flag = mission.flag;
+    const updatedState: RangeState = {
+      ...rangeState,
+      completedSteps: mission.objectives.length,
+      discoveredFlag: flag,
+    };
+    save(updatedState);
+    append([
+      { type: 'success', text: `[+] TACTICAL OVERRIDE VERIFIED: Key discovered -> ${flag}` },
+      { type: 'normal', text: `Run 'submit ${flag}' to finish verification.` },
+    ]);
+    setInput(`submit ${flag}`);
+    speakAurelia(`Tactical minigame solved. Submit the recovered flag: ${flag}`, () => {});
   };
 
   const useHint = () => {
@@ -171,6 +210,16 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
           <span className="range-kicker">MISSION OBJECTIVES</span><h2>{mission.technique}</h2><p>{mission.objective}</p>
           <ol>{mission.objectives.map((objective, index) => <li key={objective.label} className={index < rangeState.completedSteps ? 'complete' : index === rangeState.completedSteps ? 'active' : ''}><span>{index < rangeState.completedSteps ? <Check /> : <Circle />}</span><div><b>{objective.label}</b><small>{index < rangeState.completedSteps ? 'VERIFIED' : index === rangeState.completedSteps ? 'ACTIVE' : 'LOCKED'}</small></div></li>)}</ol>
           <div className="range-progress"><span>CHAIN PROGRESS <b>{Math.round(rangeState.completedSteps / mission.objectives.length * 100)}%</b></span><i><em style={{ width: `${rangeState.completedSteps / mission.objectives.length * 100}%` }} /></i></div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '8px 0' }}>
+            <button className="range-hint" onClick={() => setActiveMinigame('hex')} title="Launch Hex Matrix Breach Minigame">
+              <Zap size={13} /> BREACH PUZZLE
+            </button>
+            <button className="range-hint" onClick={() => setActiveMinigame('frequency')} title="Launch Frequency Oscilloscope Minigame">
+              <Sliders size={13} /> WAVE TUNER
+            </button>
+          </div>
+
           <button className="range-hint" onClick={useHint}><Lightbulb /> LOAD NEXT COMMAND</button>
           <p className={rangeState.trace >= 75 ? 'danger' : ''}>SIMULATED TRACE: {rangeState.trace}%</p>
           <p>Invalid commands raise trace (+15% standard, +8% damped). At 100%, 15s emergency window opens.</p>
@@ -197,7 +246,15 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
         </aside>
 
         <main className="range-console">
-          <div className="range-console-toolbar"><span><i /> ISOLATED TRAINING ENVIRONMENT</span><div><button onClick={reset}><RotateCcw /> RESET RANGE</button><button onClick={() => setLines([])}>CLEAR</button></div></div>
+          <div className="range-console-toolbar">
+            <span><i /> ISOLATED TRAINING ENVIRONMENT</span>
+            <div>
+              <button onClick={() => setActiveMinigame('hex')}><Zap size={12} /> CRACK</button>
+              <button onClick={() => setActiveMinigame('frequency')}><Sliders size={12} /> TUNE</button>
+              <button onClick={reset}><RotateCcw /> RESET RANGE</button>
+              <button onClick={() => setLines([])}>CLEAR</button>
+            </div>
+          </div>
           <div className="range-output" ref={scrollRef} role="log" aria-live="polite">
             {lines.map((line) => <p key={line.id} className={line.type}>{formatSyntaxOutput(line.text)}</p>)}
             {rangeState.completedSteps > 0 && <p className="system">Checkpoint: {rangeState.completedSteps}/{mission.objectives.length} objectives. {rangeState.discoveredFlag ? `Recovered: ${rangeState.discoveredFlag}` : 'Investigation saved.'}</p>}
@@ -212,6 +269,23 @@ export const FullTerminalModal: React.FC<FullTerminalModalProps> = ({ mission, a
         </main>
         <footer className="range-footer"><span>DIRECTORY: {rangeState.currentDirectory}</span><span>COMMAND HISTORY: {history.length}</span><span>FLAG BUFFER: {rangeState.discoveredFlag ? 'CAPTURED' : 'EMPTY'}</span>{missionComplete && <button onClick={onNextMission ?? onClose}>{onNextMission ? 'NEXT OPERATION' : 'RETURN TO COMMAND DECK'} <ChevronRight /></button>}</footer>
       </div>
+
+      {activeMinigame === 'hex' && (
+        <HexMatrixBreach
+          hasTraceDamper={augments.includes('damping')}
+          onSuccess={handleMinigameSuccess}
+          onClose={() => setActiveMinigame(null)}
+        />
+      )}
+
+      {activeMinigame === 'frequency' && (
+        <FrequencyTuner
+          missionTitle={mission.title}
+          onSuccess={handleMinigameSuccess}
+          onClose={() => setActiveMinigame(null)}
+        />
+      )}
     </div>
   );
 };
+
